@@ -1,0 +1,502 @@
+     1→     1→     1→const {
+     2→     2→     2→  Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+     3→     3→     3→  Header, Footer, PageNumber, AlignmentType, HeadingLevel, WidthType,
+     4→     4→     4→  BorderStyle, ShadingType, SectionType, NumberFormat, TableOfContents,
+     5→     5→     5→  PageBreak, LevelFormat,
+     6→     6→     6→} = require("docx");
+     7→     7→     7→const fs = require("fs");
+     8→     8→     8→
+     9→     9→     9→// ── Palette: GO-1 (Graphite Orange — proposals) ──
+    10→    10→    10→const P = {
+    11→    11→    11→  bg: "1A2330", primary: "FFFFFF", accent: "D4875A",
+    12→    12→    12→  cover: { titleColor: "FFFFFF", subtitleColor: "B0B8C0", metaColor: "90989F", footerColor: "687078" },
+    13→    13→    13→  table: { headerBg: "D4875A", headerText: "FFFFFF", accentLine: "D4875A", innerLine: "DDD0C8", surface: "F8F0EB" },
+    14→    14→    14→  body: "#182030", secondary: "#506070", surface: "#F2F4F6",
+    15→    15→    15→};
+    16→    16→    16→const c = (hex) => hex.replace("#", "");
+    17→    17→    17→
+    18→    18→    18→// ── Cover helpers ──
+    19→    19→    19→const NB = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" };
+    20→    20→    20→const noBorders = { top: NB, bottom: NB, left: NB, right: NB };
+    21→    21→    21→const allNoBorders = { top: NB, bottom: NB, left: NB, right: NB, insideHorizontal: NB, insideVertical: NB };
+    22→    22→    22→
+    23→    23→    23→function calcTitleLayout(title, maxWidthTwips, preferredPt = 40, minPt = 24) {
+    24→    24→    24→  const charWidth = (pt) => pt * 20;
+    25→    25→    25→  const charsPerLine = (pt) => Math.floor(maxWidthTwips / charWidth(pt));
+    26→    26→    26→  let titlePt = preferredPt;
+    27→    27→    27→  let lines;
+    28→    28→    28→  while (titlePt >= minPt) {
+    29→    29→    29→    const cpl = charsPerLine(titlePt);
+    30→    30→    30→    if (cpl < 2) { titlePt -= 2; continue; }
+    31→    31→    31→    lines = splitTitleLines(title, cpl);
+    32→    32→    32→    if (lines.length <= 3) break;
+    33→    33→    33→    titlePt -= 2;
+    34→    34→    34→  }
+    35→    35→    35→  if (!lines || lines.length > 3) {
+    36→    36→    36→    const cpl = charsPerLine(minPt);
+    37→    37→    37→    lines = splitTitleLines(title, cpl);
+    38→    38→    38→    titlePt = minPt;
+    39→    39→    39→  }
+    40→    40→    40→  return { titlePt, titleLines: lines };
+    41→    41→    41→}
+    42→    42→    42→
+    43→    43→    43→function splitTitleLines(title, charsPerLine) {
+    44→    44→    44→  if (title.length <= charsPerLine) return [title];
+    45→    45→    45→  const breakAfter = new Set([..."\u2018\u2019\u201C\u201D,\u3002\u3001\uFF1B\uFF1A\uFF01\uFF1F\u7684\u4E0E\u548C\u53CA\u4E4B\u5728\u4E8E\u4E3A-_-\u2014\u2013\u00B7/ \t"]);
+    46→    46→    46→  const lines = [];
+    47→    47→    47→  let remaining = title;
+    48→    48→    48→  while (remaining.length > charsPerLine) {
+    49→    49→    49→    let breakAt = -1;
+    50→    50→    50→    for (let i = charsPerLine; i >= Math.floor(charsPerLine * 0.6); i--) {
+    51→    51→    51→      if (i < remaining.length && breakAfter.has(remaining[i - 1])) { breakAt = i; break; }
+    52→    52→    52→    }
+    53→    53→    53→    if (breakAt === -1) {
+    54→    54→    54→      const limit = Math.min(remaining.length, Math.ceil(charsPerLine * 1.3));
+    55→    55→    55→      for (let i = charsPerLine + 1; i < limit; i++) {
+    56→    56→    56→        if (breakAfter.has(remaining[i - 1])) { breakAt = i; break; }
+    57→    57→    57→      }
+    58→    58→    58→    }
+    59→    59→    59→    if (breakAt === -1) breakAt = charsPerLine;
+    60→    60→    60→    lines.push(remaining.slice(0, breakAt).trim());
+    61→    61→    61→    remaining = remaining.slice(breakAt).trim();
+    62→    62→    62→  }
+    63→    63→    63→  if (remaining) lines.push(remaining);
+    64→    64→    64→  if (lines.length > 1 && lines[lines.length - 1].length <= 2) {
+    65→    65→    65→    const last = lines.pop();
+    66→    66→    66→    lines[lines.length - 1] += last;
+    67→    67→    67→  }
+    68→    68→    68→  return lines;
+    69→    69→    69→}
+    70→    70→    70→
+    71→    71→    71→function calcCoverSpacing(params) {
+    72→    72→    72→  const { titleLineCount = 1, titlePt = 36, hasSubtitle = false, hasEnglishLabel = false, metaLineCount = 0, fixedHeight = 800, pageHeight = 16838, marginTop = 0, marginBottom = 0 } = params;
+    73→    73→    73→  const SAFETY = 1200;
+    74→    74→    74→  const usableHeight = pageHeight - marginTop - marginBottom - SAFETY;
+    75→    75→    75→  const titleHeight = titleLineCount * (titlePt * 23 + 200);
+    76→    76→    76→  const subtitleHeight = hasSubtitle ? (12 * 23 + 600) : 0;
+    77→    77→    77→  const englishLabelHeight = hasEnglishLabel ? (9 * 23 + 600) : 0;
+    78→    78→    78→  const metaHeight = metaLineCount * (10 * 23 + 100);
+    79→    79→    79→  const implicitParaHeight = 3 * 300;
+    80→    80→    80→  const contentHeight = titleHeight + subtitleHeight + englishLabelHeight + metaHeight + fixedHeight + implicitParaHeight;
+    81→    81→    81→  const remainingSpace = usableHeight - contentHeight;
+    82→    82→    82→  const safeRemaining = Math.max(remainingSpace, 400);
+    83→    83→    83→  const FOOTER_MIN = 800;
+    84→    84→    84→  const rawTop = Math.floor(safeRemaining * 0.45);
+    85→    85→    85→  const rawBottom = Math.floor(safeRemaining * 0.45);
+    86→    86→    86→  const bottomSpacing = Math.max(rawBottom, FOOTER_MIN);
+    87→    87→    87→  const topSpacing = Math.max(rawTop - Math.max(0, FOOTER_MIN - rawBottom), 400);
+    88→    88→    88→  const midSpacing = Math.max(safeRemaining - topSpacing - bottomSpacing, 0);
+    89→    89→    89→  return { topSpacing, midSpacing, bottomSpacing };
+    90→    90→    90→}
+    91→    91→    91→
+    92→    92→    92→function buildCoverR1(config) {
+    93→    93→    93→  const CP = config.palette;
+    94→    94→    94→  const padL = 1200, padR = 800;
+    95→    95→    95→  const availableWidth = 11906 - padL - padR - 300;
+    96→    96→    96→  const { titlePt, titleLines } = calcTitleLayout(config.title, availableWidth, 40, 24);
+    97→    97→    97→  const titleSize = titlePt * 2;
+    98→    98→    98→  const spacing = calcCoverSpacing({
+    99→    99→    99→    titleLineCount: titleLines.length, titlePt,
+   100→   100→   100→    hasSubtitle: !!config.subtitle, hasEnglishLabel: !!config.englishLabel,
+   101→   101→   101→    metaLineCount: (config.metaLines || []).length, fixedHeight: 400,
+   102→   102→   102→  });
+   103→   103→   103→  const accentLeft = { style: BorderStyle.SINGLE, size: 8, color: CP.accent, space: 12 };
+   104→   104→   104→  const children = [];
+   105→   105→   105→  children.push(new Paragraph({ spacing: { before: spacing.topSpacing } }));
+   106→   106→   106→  if (config.englishLabel) {
+   107→   107→   107→    children.push(new Paragraph({
+   108→   108→   108→      indent: { left: padL, right: padR }, spacing: { after: 500 },
+   109→   109→   109→      border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: CP.accent, space: 8 } },
+   110→   110→   110→      children: [new TextRun({ text: config.englishLabel.split("").join("  "), size: 18, color: CP.accent, font: { ascii: "Calibri", eastAsia: "SimHei" }, characterSpacing: 40 })],
+   111→   111→   111→    }));
+   112→   112→   112→  }
+   113→   113→   113→  for (let i = 0; i < titleLines.length; i++) {
+   114→   114→   114→    children.push(new Paragraph({
+   115→   115→   115→      indent: { left: padL },
+   116→   116→   116→      spacing: { after: i < titleLines.length - 1 ? 100 : 300, line: Math.ceil(titlePt * 23), lineRule: "atLeast" },
+   117→   117→   117→      children: [new TextRun({ text: titleLines[i], size: titleSize, bold: true, color: CP.titleColor, font: { eastAsia: "SimHei", ascii: "Arial" } })],
+   118→   118→   118→    }));
+   119→   119→   119→  }
+   120→   120→   120→  if (config.subtitle) {
+   121→   121→   121→    children.push(new Paragraph({
+   122→   122→   122→      indent: { left: padL }, spacing: { after: 800 },
+   123→   123→   123→      children: [new TextRun({ text: config.subtitle, size: 24, color: CP.subtitleColor, font: { eastAsia: "Microsoft YaHei", ascii: "Arial" } })],
+   124→   124→   124→    }));
+   125→   125→   125→  }
+   126→   126→   126→  for (const line of (config.metaLines || [])) {
+   127→   127→   127→    children.push(new Paragraph({
+   128→   128→   128→      indent: { left: padL + 200 }, spacing: { after: 80 },
+   129→   129→   129→      border: { left: accentLeft },
+   130→   130→   130→      children: [new TextRun({ text: line, size: 24, color: CP.metaColor, font: { eastAsia: "Microsoft YaHei", ascii: "Arial" } })],
+   131→   131→   131→    }));
+   132→   132→   132→  }
+   133→   133→   133→  children.push(new Paragraph({ spacing: { before: spacing.bottomSpacing } }));
+   134→   134→   134→  children.push(new Paragraph({
+   135→   135→   135→    indent: { left: padL, right: padR },
+   136→   136→   136→    border: { top: { style: BorderStyle.SINGLE, size: 2, color: CP.accent, space: 8 } },
+   137→   137→   137→    spacing: { before: 200 },
+   138→   138→   138→    children: [
+   139→   139→   139→      new TextRun({ text: config.footerLeft || "", size: 16, color: CP.footerColor, font: { ascii: "Arial" } }),
+   140→   140→   140→      new TextRun({ text: "                                        " }),
+   141→   141→   141→      new TextRun({ text: config.footerRight || "", size: 16, color: CP.footerColor, font: { ascii: "Arial" } }),
+   142→   142→   142→    ],
+   143→   143→   143→  }));
+   144→   144→   144→  return [new Table({
+   145→   145→   145→    width: { size: 100, type: WidthType.PERCENTAGE },
+   146→   146→   146→    borders: allNoBorders,
+   147→   147→   147→    rows: [new TableRow({
+   148→   148→   148→      height: { value: 16838, rule: "exact" },
+   149→   149→   149→      children: [new TableCell({ shading: { type: ShadingType.CLEAR, fill: CP.bg }, borders: noBorders, children })],
+   150→   150→   150→    })],
+   151→   151→   151→  })];
+   152→   152→   152→}
+   153→   153→   153→
+   154→   154→   154→// ── Document content helpers ──
+   155→   155→   155→function heading(text, level = HeadingLevel.HEADING_1) {
+   156→   156→   156→  return new Paragraph({
+   157→   157→   157→    heading: level,
+   158→   158→   158→    spacing: { before: level === HeadingLevel.HEADING_1 ? 360 : 240, after: 120, line: 312 },
+   159→   159→   159→    children: [new TextRun({ text, bold: true, color: c(P.body), font: { ascii: "Times New Roman", eastAsia: "SimHei" } })],
+   160→   160→   160→  });
+   161→   161→   161→}
+   162→   162→   162→
+   163→   163→   163→function body(text) {
+   164→   164→   164→  return new Paragraph({
+   165→   165→   165→    alignment: AlignmentType.JUSTIFIED,
+   166→   166→   166→    indent: { firstLine: 480 },
+   167→   167→   167→    spacing: { line: 312, after: 80 },
+   168→   168→   168→    children: [new TextRun({ text, size: 24, color: c(P.body), font: { ascii: "Times New Roman", eastAsia: "SimSun" } })],
+   169→   169→   169→  });
+   170→   170→   170→}
+   171→   171→   171→
+   172→   172→   172→function bulletItem(text) {
+   173→   173→   173→  return new Paragraph({
+   174→   174→   174→    bullet: { level: 0 },
+   175→   175→   175→    spacing: { line: 312, after: 40 },
+   176→   176→   176→    children: [new TextRun({ text, size: 24, color: c(P.body), font: { ascii: "Times New Roman", eastAsia: "SimSun" } })],
+   177→   177→   177→  });
+   178→   178→   178→}
+   179→   179→   179→
+   180→   180→   180→// ── Table helpers ──
+   181→   181→   181→function headerCell(text, widthPct) {
+   182→   182→   182→  return new TableCell({
+   183→   183→   183→    width: { size: widthPct, type: WidthType.PERCENTAGE },
+   184→   184→   184→    shading: { type: ShadingType.CLEAR, fill: P.table.headerBg },
+   185→   185→   185→    borders: {
+   186→   186→   186→      top: { style: BorderStyle.SINGLE, size: 1, color: P.table.headerBg },
+   187→   187→   187→      bottom: { style: BorderStyle.SINGLE, size: 1, color: P.table.headerBg },
+   188→   188→   188→      left: { style: BorderStyle.SINGLE, size: 1, color: P.table.headerBg },
+   189→   189→   189→      right: { style: BorderStyle.SINGLE, size: 1, color: P.table.headerBg },
+   190→   190→   190→    },
+   191→   191→   191→    children: [new Paragraph({
+   192→   192→   192→      spacing: { line: 312, before: 40, after: 40 },
+   193→   193→   193→      children: [new TextRun({ text, bold: true, size: 22, color: P.table.headerText, font: { ascii: "Times New Roman", eastAsia: "SimHei" } })],
+   194→   194→   194→    })],
+   195→   195→   195→  });
+   196→   196→   196→}
+   197→   197→   197→
+   198→   198→   198→function dataCell(text, widthPct) {
+   199→   199→   199→  return new TableCell({
+   200→   200→   200→    width: { size: widthPct, type: WidthType.PERCENTAGE },
+   201→   201→   201→    shading: { type: ShadingType.CLEAR, fill: "FFFFFF" },
+   202→   202→   202→    borders: {
+   203→   203→   203→      top: { style: BorderStyle.SINGLE, size: 1, color: P.table.innerLine },
+   204→   204→   204→      bottom: { style: BorderStyle.SINGLE, size: 1, color: P.table.innerLine },
+   205→   205→   205→      left: { style: BorderStyle.SINGLE, size: 1, color: P.table.innerLine },
+   206→   206→   206→      right: { style: BorderStyle.SINGLE, size: 1, color: P.table.innerLine },
+   207→   207→   207→    },
+   208→   208→   208→    children: [new Paragraph({
+   209→   209→   209→      spacing: { line: 312, before: 40, after: 40 },
+   210→   210→   210→      children: [new TextRun({ text, size: 22, color: c(P.body), font: { ascii: "Times New Roman", eastAsia: "SimSun" } })],
+   211→   211→   211→    })],
+   212→   212→   212→  });
+   213→   213→   213→}
+   214→   214→   214→
+   215→   215→   215→// ── Page setup ──
+   216→   216→   216→const pgSize = { width: 11906, height: 16838 };
+   217→   217→   217→const pgMargin = { top: 1440, bottom: 1440, left: 1701, right: 1417 };
+   218→   218→   218→
+   219→   219→   219→// ── Cover config ──
+   220→   220→   220→const coverConfig = {
+   221→   221→   221→  title: "Aceli LAT Environment Strategy",
+   222→   222→   222→  subtitle: "Environment Topology, Promotion Pathways, and Data Governance",
+   223→   223→   223→  englishLabel: "ENVIRONMENT STRATEGY",
+   224→   224→   224→  metaLines: [
+   225→   225→   225→    "Project: Aceli Africa LAT Platform",
+   226→   226→   226→    "Version: 1.0",
+   227→   227→   227→    "Date: 2026-06-12",
+   228→   228→   228→    "Classification: Confidential",
+   229→   229→   229→  ],
+   230→   230→   230→  footerLeft: "Aceli Africa",
+   231→   231→   231→  footerRight: "Sprint 0 Deliverable",
+   232→   232→   232→  palette: P.cover,
+   233→   233→   233→};
+   234→   234→   234→
+   235→   235→   235→// ── Table border preset ──
+   236→   236→   236→const tableBorders = {
+   237→   237→   237→  top: { style: BorderStyle.SINGLE, size: 1, color: P.table.accentLine },
+   238→   238→   238→  bottom: { style: BorderStyle.SINGLE, size: 1, color: P.table.accentLine },
+   239→   239→   239→  left: { style: BorderStyle.SINGLE, size: 1, color: P.table.accentLine },
+   240→   240→   240→  right: { style: BorderStyle.SINGLE, size: 1, color: P.table.accentLine },
+   241→   241→   241→  insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: P.table.innerLine },
+   242→   242→   242→  insideVertical: { style: BorderStyle.SINGLE, size: 1, color: P.table.innerLine },
+   243→   243→   243→};
+   244→   244→   244→
+   245→   245→   245→// ── Build Document ──
+   246→   246→   246→const doc = new Document({
+   247→   247→   247→  styles: {
+   248→   248→   248→    default: {
+   249→   249→   249→      document: {
+   250→   250→   250→        run: { font: { ascii: "Times New Roman", eastAsia: "SimSun" }, size: 24, color: c(P.body) },
+   251→   251→   251→        paragraph: { spacing: { line: 312 } },
+   252→   252→   252→      },
+   253→   253→   253→      heading1: { run: { font: { ascii: "Times New Roman", eastAsia: "SimHei" }, size: 32, bold: true, color: c(P.body) }, paragraph: { spacing: { before: 360, after: 160, line: 312 } } },
+   254→   254→   254→      heading2: { run: { font: { ascii: "Times New Roman", eastAsia: "SimHei" }, size: 28, bold: true, color: c(P.body) }, paragraph: { spacing: { before: 240, after: 120, line: 312 } } },
+   255→   255→   255→      heading3: { run: { font: { ascii: "Times New Roman", eastAsia: "SimHei" }, size: 24, bold: true, color: c(P.body) }, paragraph: { spacing: { before: 200, after: 100, line: 312 } } },
+   256→   256→   256→    },
+   257→   257→   257→  },
+   258→   258→   258→  numbering: {
+   259→   259→   259→    config: [
+   260→   260→   260→      { reference: "bullet-list", levels: [{ level: 0, format: LevelFormat.BULLET, text: "\u2022", alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 720, hanging: 360 } } } }] },
+   261→   261→   261→    ],
+   262→   262→   262→  },
+   263→   263→   263→  sections: [
+   264→   264→   264→    // ── Section 1: Cover (no page numbers) ──
+   265→   265→   265→    {
+   266→   266→   266→      properties: { page: { size: pgSize, margin: { top: 0, bottom: 0, left: 0, right: 0 } } },
+   267→   267→   267→      children: buildCoverR1(coverConfig),
+   268→   268→   268→    },
+   269→   269→   269→    // ── Section 2: TOC (Roman numerals) ──
+   270→   270→   270→    {
+   271→   271→   271→      properties: { type: SectionType.NEXT_PAGE, page: { size: pgSize, margin: pgMargin, pageNumbers: { start: 1, formatType: NumberFormat.UPPER_ROMAN } } },
+   272→   272→   272→      footers: { default: new Footer({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ children: [PageNumber.CURRENT], size: 18, color: "808080" })] })] }) },
+   273→   273→   273→      children: [
+   274→   274→   274→        new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 480, after: 360 }, children: [new TextRun({ text: "Table of Contents", bold: true, size: 32, font: { ascii: "Times New Roman", eastAsia: "SimHei" } })] }),
+   275→   275→   275→        new TableOfContents("Table of Contents", { hyperlink: true, headingStyleRange: "1-3" }),
+   276→   276→   276→        new Paragraph({ spacing: { before: 200 }, children: [new TextRun({ text: "Note: This Table of Contents is generated via field codes. To ensure page number accuracy after editing, please right-click the TOC and select \"Update Field.\"", italics: true, size: 18, color: "888888" })] }),
+   277→   277→   277→        new Paragraph({ children: [new PageBreak()] }),
+   278→   278→   278→      ],
+   279→   279→   279→    },
+   280→   280→   280→    // ── Section 3: Body (Arabic from 1) ──
+   281→   281→   281→    {
+   282→   282→   282→      properties: { type: SectionType.NEXT_PAGE, page: { size: pgSize, margin: pgMargin, pageNumbers: { start: 1, formatType: NumberFormat.DECIMAL } } },
+   283→   283→   283→      headers: { default: new Header({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Aceli LAT Environment Strategy", size: 18, color: "808080" })] })] }) },
+   284→   284→   284→      footers: { default: new Footer({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ children: [PageNumber.CURRENT], size: 18, color: "808080" })] })] }) },
+   285→   285→   285→      children: [
+   286→   286→   286→        // ── 1. Environment Strategy Purpose ──
+   287→   287→   287→        heading("1. Environment Strategy Purpose"),
+   288→   288→   288→        body("This document defines the environment strategy for the Aceli LAT production build. It establishes the environments, their purposes, promotion pathways, access controls, data handling rules, and operational responsibilities. The strategy ensures that every stage of the delivery pipeline operates in a controlled, reproducible, and auditable manner, consistent with the RFP requirements for data governance, tenant security, and production safety."),
+   289→   289→   289→
+   290→   290→   290→        // ── 2. Environment Topology ──
+   291→   291→   291→        heading("2. Environment Topology"),
+   292→   292→   292→        body("The environment topology comprises five distinct environments, each serving a specific purpose in the delivery pipeline."),
+   293→   293→   293→
+   294→   294→   294→        // ── Environment Topology Table ──
+   295→   295→   295→        new Table({
+   296→   296→   296→          width: { size: 100, type: WidthType.PERCENTAGE },
+   297→   297→   297→          borders: tableBorders,
+   298→   298→   298→          rows: [
+   299→   299→   299→            new TableRow({
+   300→   300→   300→              tableHeader: true,
+   301→   301→   301→              children: [
+   302→   302→   302→                headerCell("Environment", 15),
+   303→   303→   303→                headerCell("Purpose", 25),
+   304→   304→   304→                headerCell("Data Classification", 22),
+   305→   305→   305→                headerCell("Access Level", 18),
+   306→   306→   306→                headerCell("Managed By", 20),
+   307→   307→   307→              ],
+   308→   308→   308→            }),
+   309→   309→   309→            new TableRow({ cantSplit: true, children: [
+   310→   310→   310→              dataCell("Local/Dev", 15),
+   311→   311→   311→              dataCell("Individual agent development and unit testing", 25),
+   312→   312→   312→              dataCell("Synthetic data only", 22),
+   313→   313→   313→              dataCell("Developer role", 18),
+   314→   314→   314→              dataCell("DevSecOps Agent", 20),
+   315→   315→   315→            ]}),
+   316→   316→   316→            new TableRow({ cantSplit: true, children: [
+   317→   317→   317→              dataCell("Test", 15),
+   318→   318→   318→              dataCell("Integration testing and contract validation", 25),
+   319→   319→   319→              dataCell("Synthetic data with controlled test fixtures", 22),
+   320→   320→   320→              dataCell("QA and development roles", 18),
+   321→   321→   321→              dataCell("DevSecOps Agent", 20),
+   322→   322→   322→            ]}),
+   323→   323→   323→            new TableRow({ cantSplit: true, children: [
+   324→   324→   324→              dataCell("UAT", 15),
+   325→   325→   325→              dataCell("User acceptance testing and business validation", 25),
+   326→   326→   326→              dataCell("Anonymized production-like data", 22),
+   327→   327→   327→              dataCell("Business users and QA", 18),
+   328→   328→   328→              dataCell("DevSecOps Agent", 20),
+   329→   329→   329→            ]}),
+   330→   330→   330→            new TableRow({ cantSplit: true, children: [
+   331→   331→   331→              dataCell("Staging", 15),
+   332→   332→   332→              dataCell("Pre-production validation and performance testing", 25),
+   333→   333→   333→              dataCell("Production mirror data (anonymized)", 22),
+   334→   334→   334→              dataCell("Release manager and QA", 18),
+   335→   335→   335→              dataCell("DevSecOps Agent", 20),
+   336→   336→   336→            ]}),
+   337→   337→   337→            new TableRow({ cantSplit: true, children: [
+   338→   338→   338→              dataCell("Production", 15),
+   339→   339→   339→              dataCell("Live operational environment", 25),
+   340→   340→   340→              dataCell("Real production data", 22),
+   341→   341→   341→              dataCell("Authorized users per RBAC", 18),
+   342→   342→   342→              dataCell("DevSecOps Agent with Aceli operations", 20),
+   343→   343→   343→            ]}),
+   344→   344→   344→          ],
+   345→   345→   345→        }),
+   346→   346→   346→
+   347→   347→   347→        // ── 3. Promotion Pathway ──
+   348→   348→   348→        heading("3. Promotion Pathway"),
+   349→   349→   349→        body("Code and configuration promote through environments in a strict linear pathway:"),
+   350→   350→   350→        bulletItem("Local/Dev to Test: automated CI pipeline triggers on merge to develop branch; requires passing unit tests and static analysis"),
+   351→   351→   351→        bulletItem("Test to UAT: automated promotion on successful integration test suite completion; requires QA agent sign-off"),
+   352→   352→   352→        bulletItem("UAT to Staging: manual promotion by Release Manager after UAT sign-off; requires UAT evidence pack"),
+   353→   353→   353→        bulletItem("Staging to Production: manual promotion by Release Manager after pilot go-live checklist or country rollout readiness sign-off; requires signed release checklist and rollback plan"),
+   354→   354→   354→        body("No promotion may skip an environment. Rollback follows the reverse pathway with documented rationale."),
+   355→   355→   355→
+   356→   356→   356→        // ── 4. Data Handling per Environment ──
+   357→   357→   357→        heading("4. Data Handling per Environment"),
+   358→   358→   358→        body("Data handling rules are strict and non-negotiable. Local/Dev and Test environments must use only synthetic data generated by approved test data factories. No production data, anonymized or otherwise, may be present in these environments. UAT environments may use anonymized production-like data that has been processed through an approved data masking pipeline. Staging environments may use production mirror data that has been anonymized, with the masking process validated by the Red Team/Compliance Agent. Production environments contain real data and are subject to all data governance constraints including the prohibition on using lender-level or borrower-level data for model training."),
+   359→   359→   359→
+   360→   360→   360→        // ── Data Handling Table ──
+   361→   361→   361→        new Table({
+   362→   362→   362→          width: { size: 100, type: WidthType.PERCENTAGE },
+   363→   363→   363→          borders: tableBorders,
+   364→   364→   364→          rows: [
+   365→   365→   365→            new TableRow({
+   366→   366→   366→              tableHeader: true,
+   367→   367→   367→              children: [
+   368→   368→   368→                headerCell("Environment", 20),
+   369→   369→   369→                headerCell("Data Type Permitted", 40),
+   370→   370→   370→                headerCell("Restrictions", 40),
+   371→   371→   371→              ],
+   372→   372→   372→            }),
+   373→   373→   373→            new TableRow({ cantSplit: true, children: [
+   374→   374→   374→              dataCell("Local/Dev", 20),
+   375→   375→   375→              dataCell("Synthetic data from approved test data factories", 40),
+   376→   376→   376→              dataCell("No production data of any kind", 40),
+   377→   377→   377→            ]}),
+   378→   378→   378→            new TableRow({ cantSplit: true, children: [
+   379→   379→   379→              dataCell("Test", 20),
+   380→   380→   380→              dataCell("Synthetic data with controlled test fixtures", 40),
+   381→   381→   381→              dataCell("No production data of any kind", 40),
+   382→   382→   382→            ]}),
+   383→   383→   383→            new TableRow({ cantSplit: true, children: [
+   384→   384→   384→              dataCell("UAT", 20),
+   385→   385→   385→              dataCell("Anonymized production-like data via approved masking pipeline", 40),
+   386→   386→   386→              dataCell("Must be processed through approved data masking pipeline", 40),
+   387→   387→   387→            ]}),
+   388→   388→   388→            new TableRow({ cantSplit: true, children: [
+   389→   389→   389→              dataCell("Staging", 20),
+   390→   390→   390→              dataCell("Production mirror data (anonymized)", 40),
+   391→   391→   391→              dataCell("Masking process validated by Red Team/Compliance Agent", 40),
+   392→   392→   392→            ]}),
+   393→   393→   393→            new TableRow({ cantSplit: true, children: [
+   394→   394→   394→              dataCell("Production", 20),
+   395→   395→   395→              dataCell("Real production data", 40),
+   396→   396→   396→              dataCell("Full data governance constraints apply; no lender/borrower-level data for model training", 40),
+   397→   397→   397→            ]}),
+   398→   398→   398→          ],
+   399→   399→   399→        }),
+   400→   400→   400→
+   401→   401→   401→        // ── 5. Secret and Configuration Management ──
+   402→   402→   402→        heading("5. Secret and Configuration Management"),
+   403→   403→   403→        body("Secrets, tokens, credentials, and tenant settings must never be hardcoded. All secrets are managed through an approved secrets management solution with environment-specific vaults. Configuration is externalized and environment-driven, with no production credentials in non-production configuration files. Secret rotation follows a defined schedule, and access to production secrets requires explicit authorization from the Delivery Orchestrator and Aceli security. The DevSecOps Agent is responsible for maintaining the secrets management infrastructure and auditing access logs."),
+   404→   404→   404→
+   405→   405→   405→        // ── 6. Access Control and RBAC per Environment ──
+   406→   406→   406→        heading("6. Access Control and RBAC per Environment"),
+   407→   407→   407→        body("Access to each environment is governed by role-based access control aligned to the principle of least privilege."),
+   408→   408→   408→
+   409→   409→   409→        // ── RBAC Table ──
+   410→   410→   410→        new Table({
+   411→   411→   411→          width: { size: 100, type: WidthType.PERCENTAGE },
+   412→   412→   412→          borders: tableBorders,
+   413→   413→   413→          rows: [
+   414→   414→   414→            new TableRow({
+   415→   415→   415→              tableHeader: true,
+   416→   416→   416→              children: [
+   417→   417→   417→                headerCell("Role", 20),
+   418→   418→   418→                headerCell("Local/Dev", 16),
+   419→   419→   419→                headerCell("Test", 16),
+   420→   420→   420→                headerCell("UAT", 16),
+   421→   421→   421→                headerCell("Staging", 16),
+   422→   422→   422→                headerCell("Production", 16),
+   423→   423→   423→              ],
+   424→   424→   424→            }),
+   425→   425→   425→            new TableRow({ cantSplit: true, children: [
+   426→   426→   426→              dataCell("Developer", 20),
+   427→   427→   427→              dataCell("Write", 16),
+   428→   428→   428→              dataCell("Read", 16),
+   429→   429→   429→              dataCell("None", 16),
+   430→   430→   430→              dataCell("None", 16),
+   431→   431→   431→              dataCell("None", 16),
+   432→   432→   432→            ]}),
+   433→   433→   433→            new TableRow({ cantSplit: true, children: [
+   434→   434→   434→              dataCell("QA Agent", 20),
+   435→   435→   435→              dataCell("Read", 16),
+   436→   436→   436→              dataCell("Write", 16),
+   437→   437→   437→              dataCell("Write", 16),
+   438→   438→   438→              dataCell("None", 16),
+   439→   439→   439→              dataCell("None", 16),
+   440→   440→   440→            ]}),
+   441→   441→   441→            new TableRow({ cantSplit: true, children: [
+   442→   442→   442→              dataCell("Business User", 20),
+   443→   443→   443→              dataCell("None", 16),
+   444→   444→   444→              dataCell("None", 16),
+   445→   445→   445→              dataCell("Write", 16),
+   446→   446→   446→              dataCell("None", 16),
+   447→   447→   447→              dataCell("None", 16),
+   448→   448→   448→            ]}),
+   449→   449→   449→            new TableRow({ cantSplit: true, children: [
+   450→   450→   450→              dataCell("Release Manager", 20),
+   451→   451→   451→              dataCell("None", 16),
+   452→   452→   452→              dataCell("None", 16),
+   453→   453→   453→              dataCell("None", 16),
+   454→   454→   454→              dataCell("Write + Promote", 16),
+   455→   455→   455→              dataCell("None", 16),
+   456→   456→   456→            ]}),
+   457→   457→   457→            new TableRow({ cantSplit: true, children: [
+   458→   458→   458→              dataCell("DevSecOps Agent", 20),
+   459→   459→   459→              dataCell("Maintain", 16),
+   460→   460→   460→              dataCell("Maintain", 16),
+   461→   461→   461→              dataCell("Maintain", 16),
+   462→   462→   462→              dataCell("Maintain", 16),
+   463→   463→   463→              dataCell("Maintain", 16),
+   464→   464→   464→            ]}),
+   465→   465→   465→            new TableRow({ cantSplit: true, children: [
+   466→   466→   466→              dataCell("Aceli Operations", 20),
+   467→   467→   467→              dataCell("None", 16),
+   468→   468→   468→              dataCell("None", 16),
+   469→   469→   469→              dataCell("None", 16),
+   470→   470→   470→              dataCell("None", 16),
+   471→   471→   471→              dataCell("Authorized access", 16),
+   472→   472→   472→            ]}),
+   473→   473→   473→          ],
+   474→   474→   474→        }),
+   475→   475→   475→        body("No agent or human may access production data without explicit authorization and logged access."),
+   476→   476→   476→
+   477→   477→   477→        // ── 7. CI/CD Pipeline Architecture ──
+   478→   478→   478→        heading("7. CI/CD Pipeline Architecture"),
+   479→   479→   479→        body("The CI/CD pipeline enforces the promotion pathway through automated gates. Every merge to the develop branch triggers: linting, static analysis, unit test execution, and build artifact creation. Successful completion promotes to the Test environment automatically. Integration test completion and QA sign-off triggers promotion to UAT. UAT sign-off enables manual promotion to Staging. Release checklist sign-off enables manual promotion to Production. Rollback is automated from Staging to UAT and from Production to Staging, with documented rationale required."),
+   480→   480→   480→
+   481→   481→   481→        // ── CI/CD Pipeline Table ──
+   482→   482→   482→        new Table({
+   483→   483→   483→          width: { size: 100, type: WidthType.PERCENTAGE },
+   484→   484→   484→          borders: tableBorders,
+   485→   485→   485→          rows: [
+   486→   486→   486→            new TableRow({
+   487→   487→   487→              tableHeader: true,
+   488→   488→   488→              children: [
+   489→   489→   489→                headerCell("Pipeline Stage", 20),
+   490→   490→   490→                headerCell("Trigger", 25),
+   491→   491→   491→                headerCell("Gate Requirements", 30),
+   492→   492→   492→                headerCell("Promotion Type", 25),
+   493→   493→   493→              ],
+   494→   494→   494→            }),
+   495→   495→   495→            new TableRow({ cantSplit: true, children: [
+   496→   496→   496→              dataCell("Build", 20),
+   497→   497→   497→              dataCell("Merge to develop branch", 25),
+   498→   498→   498→              dataCell("Linting, static analysis, unit tests, build artifact creation", 30),
+   499→   499→   499→              dataCell("Automated to Test", 25),
+   500→   500→   500→            ]}),
+
+[showing lines 1-500 of 588; use offset=501 with limit to continue reading]

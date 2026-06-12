@@ -241,7 +241,7 @@ const coverConfig = {
   englishLabel: "SECURITY CHECKLIST",
   metaLines: [
     "Project: Aceli Africa LAT Platform",
-    "Version: 1.0",
+    "Version: 1.1 \u2014 Updated",
     "Date: 2026-06-12",
     "Classification: Confidential",
   ],
@@ -293,19 +293,19 @@ const doc = new Document({
       children: [
         // ── 1. Checklist Purpose ──
         heading("1. Checklist Purpose"),
-        body("This checklist governs the security review and tenant approval process for all platforms, services, and tools used in the Aceli LAT production build. Per the RFP, any additional application runtime, middleware, storage, queue, mobile/web framework, observability stack, transcription component, or integration platform must pass Aceli information security review and be added to the approved list before contract execution if vendor-provided. This checklist ensures that no unapproved component enters the production build pipeline."),
+        body("This checklist governs the security review and tenant approval process for all platforms, services, and tools used in the Aceli LAT production build. Per the RFP, any additional application runtime, middleware, storage, queue, mobile/web framework, observability stack, transcription component, or integration platform must pass Aceli information security review and be added to the approved list before contract execution if vendor-provided. This checklist ensures that no unapproved component enters the production build pipeline. This updated version incorporates clarifications received from the Aceli consortium regarding confirmed platforms, licensing structures, and operating conditions."),
 
         // ── 2. Mandatory Enterprise Platforms (Pre-Approved) ──
         heading("2. Mandatory Enterprise Platforms (Pre-Approved)"),
         body("The following enterprise platforms are pre-approved for use in the Aceli LAT production build, subject to the conditions specified below. Each platform must operate within its designated Aceli-approved tenant and must not exceed its approved scope."),
 
         makeTable(
-          [headerCell("Platform", 20), headerCell("Purpose", 30), headerCell("Approval Status", 20), headerCell("Conditions", 30)],
+          [headerCell("Platform", 20), headerCell("Purpose", 30), headerCell("Approval Status", 15), headerCell("Conditions", 35)],
           [
-            [dataCell("Salesforce", 20), dataCell("System of record, API integration target", 30), dataCell("Pre-Approved", 20), dataCell("Must operate within Aceli Salesforce tenant", 30)],
-            [dataCell("Power BI", 20), dataCell("Reporting, analytics, visualization", 30), dataCell("Pre-Approved", 20), dataCell("Must not become operational system of record", 30)],
-            [dataCell("Google Workspace", 20), dataCell("Collaboration, document operations", 30), dataCell("Pre-Approved", 20), dataCell("Must operate within Aceli-approved enterprise tenant", 30)],
-            [dataCell("Claude Team/Enterprise", 20), dataCell("Governed AI processing", 30), dataCell("Pre-Approved", 20), dataCell("Must operate within Aceli-approved enterprise tenant; no data for model training", 30)],
+            [dataCell("Salesforce Enterprise Edition", 20), dataCell("System of record for lender relationship data with custom objects; API integration target", 30), dataCell("Pre-Approved", 15), dataCell("Must operate within Aceli Salesforce tenant; Aceli internal Salesforce team supports configuration, integration, workflow, and data model enhancements collaboratively; Salesforce sandbox available for development and testing", 35)],
+            [dataCell("Power BI", 20), dataCell("Reporting, analytics, visualization layer; reads from Salesforce via standard connector alongside controlled data sources", 30), dataCell("Pre-Approved", 15), dataCell("Must not become operational system of record or data capture tool; existing benchmarking dataset of ~60K records connected via Google Sheets sources must flow through controlled pathways", 35)],
+            [dataCell("Google Workspace", 20), dataCell("Collaboration, document operations where applicable", 30), dataCell("Pre-Approved", 15), dataCell("Must operate within Aceli-approved enterprise tenant; current LAT tooling resides in Google Sheets and will be migrated to the governed platform", 35)],
+            [dataCell("Claude Team / Enterprise via Claude for Nonprofits", 20), dataCell("Governed AI processing for transcription, extraction, summarization, and prompt orchestration", 30), dataCell("Pre-Approved", 15), dataCell("Must operate within Aceli-approved enterprise tenant; production LLM processing involving sensitive programme data must occur within approved enterprise environments; no data used for model training or fine-tuning; ongoing platform licensing costs managed separately from the capped implementation budget; Aceli operates within the Claude for Nonprofits programme", 35)],
           ]
         ),
 
@@ -314,16 +314,16 @@ const doc = new Document({
         body("All components not listed in Section 2 as pre-approved must undergo a formal security review before being introduced into the production build. The table below identifies each component category, provides examples, and specifies the review authority and approval timeline."),
 
         makeTable(
-          [headerCell("Component Category", 20), headerCell("Examples", 20), headerCell("Review Required", 15), headerCell("Review Authority", 25), headerCell("Approval Timeline", 20)],
+          [headerCell("Component Category", 18), headerCell("Examples", 22), headerCell("Review Required", 12), headerCell("Review Authority", 28), headerCell("Approval Timeline", 20)],
           [
-            [dataCell("Application Runtime", 20), dataCell("Node.js, Python, Java", 20), dataCell("Yes", 15), dataCell("DevSecOps + Red Team", 25), dataCell("Sprint 0-1", 20)],
-            [dataCell("Database/Storage", 20), dataCell("PostgreSQL, Redis, S3-equivalent", 20), dataCell("Yes", 15), dataCell("DevSecOps + Red Team", 25), dataCell("Sprint 0-1", 20)],
-            [dataCell("Message Queue", 20), dataCell("Kafka, RabbitMQ, SQS-equivalent", 20), dataCell("Yes", 15), dataCell("DevSecOps + Red Team", 25), dataCell("Sprint 0-1", 20)],
-            [dataCell("Mobile/Web Framework", 20), dataCell("Next.js, React, PWA tooling", 20), dataCell("Yes", 15), dataCell("DevSecOps + Red Team", 25), dataCell("Sprint 0-1", 20)],
-            [dataCell("Observability Stack", 20), dataCell("Logging, monitoring, tracing tools", 20), dataCell("Yes", 15), dataCell("DevSecOps + Red Team", 25), dataCell("Sprint 0-1", 20)],
-            [dataCell("Transcription Service", 20), dataCell("Speech-to-text service", 20), dataCell("Yes", 15), dataCell("DevSecOps + Red Team + Architect", 25), dataCell("Sprint 0-1", 20)],
-            [dataCell("Integration Platform", 20), dataCell("API gateway, ESB", 20), dataCell("Yes", 15), dataCell("DevSecOps + Red Team", 25), dataCell("Sprint 0-1", 20)],
-            [dataCell("Identity Provider", 20), dataCell("SSO, OAuth, MFA", 20), dataCell("Yes", 15), dataCell("DevSecOps + Red Team", 25), dataCell("Sprint 0-1", 20)],
+            [dataCell("Application Runtime", 18), dataCell("Node.js, Python, Java", 22), dataCell("Yes", 12), dataCell("DevSecOps + Red Team", 28), dataCell("Sprint 0-1", 20)],
+            [dataCell("Database/Storage", 18), dataCell("PostgreSQL, Redis, S3-equivalent", 22), dataCell("Yes", 12), dataCell("DevSecOps + Red Team", 28), dataCell("Sprint 0-1", 20)],
+            [dataCell("Message Queue", 18), dataCell("Kafka, RabbitMQ, SQS-equivalent", 22), dataCell("Yes", 12), dataCell("DevSecOps + Red Team", 28), dataCell("Sprint 0-1", 20)],
+            [dataCell("Mobile/Web Framework", 18), dataCell("Next.js, React, PWA tooling", 22), dataCell("Yes", 12), dataCell("DevSecOps + Red Team", 28), dataCell("Sprint 0-1", 20)],
+            [dataCell("Observability Stack", 18), dataCell("Logging, monitoring, tracing tools", 22), dataCell("Yes", 12), dataCell("DevSecOps + Red Team", 28), dataCell("Sprint 0-1", 20)],
+            [dataCell("Transcription Service", 18), dataCell("Speech-to-text with regional accent and limited multilingual support", 22), dataCell("Yes", 12), dataCell("DevSecOps + Red Team + Architect", 28), dataCell("Sprint 0-1", 20)],
+            [dataCell("Integration Platform", 18), dataCell("API gateway, ESB", 22), dataCell("Yes", 12), dataCell("DevSecOps + Red Team", 28), dataCell("Sprint 0-1", 20)],
+            [dataCell("Identity Provider", 18), dataCell("SSO, OAuth, MFA", 22), dataCell("Yes", 12), dataCell("DevSecOps + Red Team", 28), dataCell("Sprint 0-1", 20)],
           ]
         ),
 
@@ -338,7 +338,7 @@ const doc = new Document({
         body("Does the component operate within an Aceli-approved enterprise tenant? Is there risk of cross-tenant data exposure?"),
 
         heading("4.3 Training Data Exclusion", HeadingLevel.HEADING_2),
-        body("Does the component use input data for model training or fine-tuning? Can training be explicitly opted out?"),
+        body("Does the component use input data for model training or fine-tuning? Can training be explicitly opted out? This is especially critical for AI transcription services that process field conversations containing lender-sensitive information."),
 
         heading("4.4 Audit and Logging Capability", HeadingLevel.HEADING_2),
         body("Does the component produce audit logs? Are logs exportable and immutable?"),
@@ -355,30 +355,33 @@ const doc = new Document({
         heading("4.8 Business Continuity", HeadingLevel.HEADING_2),
         body("What is the vendor SLA for availability? Is there a disaster recovery plan?"),
 
+        heading("4.9 Budget Separation", HeadingLevel.HEADING_2),
+        body("Are ongoing licensing costs clearly identified and separable from the implementation budget? Per Aceli consortium clarification, platform licensing costs are managed separately from the capped implementation budget."),
+
         // ── 5. Tenant Approval Process ──
         heading("5. Tenant Approval Process"),
         body("The following seven-step process governs the approval of all components for use in the Aceli LAT production build. No component may enter the production pipeline without completing this process."),
 
         heading("5.1 Step 1: Component Identification", HeadingLevel.HEADING_2),
-        body("Requesting agent identifies the component, version, and intended use."),
+        body("Requesting agent identifies the component, version, and intended use; includes identification of any licensing costs separate from implementation budget."),
 
         heading("5.2 Step 2: Security Review Submission", HeadingLevel.HEADING_2),
-        body("DevSecOps Agent completes the security review checklist for the component."),
+        body("DevSecOps Agent completes the security review checklist for the component; includes budget impact classification."),
 
         heading("5.3 Step 3: Red Team Assessment", HeadingLevel.HEADING_2),
-        body("Red Team/Compliance Agent conducts independent security assessment."),
+        body("Red Team/Compliance Agent conducts independent security assessment; includes data governance review for AI components processing sensitive programme data."),
 
         heading("5.4 Step 4: Architecture Review", HeadingLevel.HEADING_2),
-        body("Solution Architect evaluates integration impact and compatibility."),
+        body("Solution Architect evaluates integration impact and compatibility; includes Aceli Salesforce team collaboration for Salesforce-related components."),
 
         heading("5.5 Step 5: Approval Decision", HeadingLevel.HEADING_2),
-        body("DevSecOps + Red Team + Architect jointly approve or reject; rejection requires rationale and alternative recommendation."),
+        body("DevSecOps + Red Team + Architect jointly approve or reject; rejection requires rationale and alternative recommendation; budget implications documented for Aceli review."),
 
         heading("5.6 Step 6: Approved List Update", HeadingLevel.HEADING_2),
-        body("Approved component is added to the approved list with version, conditions, and review date."),
+        body("Approved component is added to the approved list with version, conditions, review date, and licensing cost classification."),
 
         heading("5.7 Step 7: Ongoing Monitoring", HeadingLevel.HEADING_2),
-        body("Approved components are reviewed at phase transitions and on vulnerability disclosure."),
+        body("Approved components are reviewed at phase transitions and on vulnerability disclosure; licensing costs reviewed at phase gates."),
 
         // ── 6. Prohibited Components and Patterns ──
         heading("6. Prohibited Components and Patterns"),
@@ -392,20 +395,37 @@ const doc = new Document({
         bulletItem("AI auto-writeback bypassing reviewer approval"),
         bulletItem("Hardcoded secrets, tokens, or credentials"),
         bulletItem("Unapproved third-party analytics or tracking services"),
+        bulletItem("Any component that uses Aceli lender-level or borrower-level data for model training or fine-tuning regardless of the vendor or platform"),
 
         // ── 7. Compliance Validation Schedule ──
         heading("7. Compliance Validation Schedule"),
         body("Compliance validation occurs at the following points in the delivery lifecycle. Each validation point ensures that the approved component list remains current and that no unapproved components have entered the production pipeline."),
 
         makeTable(
-          [headerCell("Validation Point", 20), headerCell("Scope", 45), headerCell("Output", 35)],
+          [headerCell("Validation Point", 18), headerCell("Scope", 50), headerCell("Output", 32)],
           [
-            [dataCell("Sprint 0", 20), dataCell("Initial approved list published; all mandatory platforms confirmed", 45), dataCell("Approved component register", 35)],
-            [dataCell("Sprint Boundary", 20), dataCell("New component additions reviewed and approved before use", 45), dataCell("Updated approved list with new entries", 35)],
-            [dataCell("Phase Gates", 20), dataCell("Full compliance review of all approved components; vulnerability assessment", 45), dataCell("Phase gate compliance report", 35)],
-            [dataCell("Ad-hoc", 20), dataCell("Immediate review triggered by security incident or vulnerability disclosure", 45), dataCell("Incident review and remediation report", 35)],
+            [dataCell("Sprint 0", 18), dataCell("Initial approved list published; all mandatory platforms confirmed including Claude for Nonprofits; Salesforce Enterprise Edition and sandbox availability confirmed", 50), dataCell("Approved component register", 32)],
+            [dataCell("Sprint Boundary", 18), dataCell("New component additions reviewed and approved before use; licensing cost implications assessed", 50), dataCell("Updated approved list with new entries", 32)],
+            [dataCell("Phase Gates", 18), dataCell("Full compliance review of all approved components; vulnerability assessment; licensing cost review", 50), dataCell("Phase gate compliance report", 32)],
+            [dataCell("Ad-hoc", 18), dataCell("Immediate review triggered by security incident or vulnerability disclosure", 50), dataCell("Incident review and remediation report", 32)],
           ]
         ),
+
+        // ── 8. Consortium Clarification Impacts ──
+        heading("8. Consortium Clarification Impacts"),
+        body("This section documents the specific impacts of the Aceli consortium clarifications on the security and tenant approval process. Each clarification has been evaluated for its effect on the checklist requirements and operational procedures."),
+
+        heading("8.1 Claude for Nonprofits Confirmation (Consortium Clarification 7)", HeadingLevel.HEADING_2),
+        body("Claude Team/Enterprise is confirmed as the pre-approved AI platform; licensing costs are separate from implementation budget; production LLM processing must occur in approved enterprise environments."),
+
+        heading("8.2 Salesforce Enterprise Edition Details (Consortium Clarification 2)", HeadingLevel.HEADING_2),
+        body("Custom objects confirmed; Aceli internal Salesforce team collaboration required; sandbox available for development and testing; LAT scoring framework not currently in Salesforce."),
+
+        heading("8.3 Transcription Requirements (Consortium Clarification 5)", HeadingLevel.HEADING_2),
+        body("Regional accent support and limited multilingual code-switching required; transcription service security review must cover data handling for conversations containing Swahili and local-language phrases."),
+
+        heading("8.4 Benchmarking Dataset (Consortium Clarification 4)", HeadingLevel.HEADING_2),
+        body("Approximately 60,000 records in Google Sheets connected to Power BI; data pathway must be controlled and auditable; no rebuild of existing architecture."),
       ],
     },
   ],
@@ -415,5 +435,5 @@ const doc = new Document({
 const outPath = "/home/z/my-project/download/sprint0/Aceli_LAT_Security_Tenant_Approval_Checklist.docx";
 Packer.toBuffer(doc).then((buf) => {
   fs.writeFileSync(outPath, buf);
-  console.log("Security Tenant Approval Checklist generated successfully at:", outPath);
+  console.log("Security Tenant Approval Checklist (UPDATED) generated successfully at:", outPath);
 });

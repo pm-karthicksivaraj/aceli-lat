@@ -223,12 +223,12 @@ const coverConfig = {
   englishLabel: "ENVIRONMENT STRATEGY",
   metaLines: [
     "Project: Aceli Africa LAT Platform",
-    "Version: 1.0",
-    "Date: 2026-06-12",
+    "Version: 1.1 — Updated",
+    "Date: 2026-03-05",
     "Classification: Confidential",
   ],
   footerLeft: "Aceli Africa",
-  footerRight: "Sprint 0 Deliverable",
+  footerRight: "Sprint 0 Deliverable — Updated",
   palette: P.cover,
 };
 
@@ -285,7 +285,7 @@ const doc = new Document({
       children: [
         // ── 1. Environment Strategy Purpose ──
         heading("1. Environment Strategy Purpose"),
-        body("This document defines the environment strategy for the Aceli LAT production build. It establishes the environments, their purposes, promotion pathways, access controls, data handling rules, and operational responsibilities. The strategy ensures that every stage of the delivery pipeline operates in a controlled, reproducible, and auditable manner, consistent with the RFP requirements for data governance, tenant security, and production safety."),
+        body("This document defines the environment strategy for the Aceli LAT production build. It establishes the environments, their purposes, promotion pathways, access controls, data handling rules, and operational responsibilities. The strategy ensures that every stage of the delivery pipeline operates in a controlled, reproducible, and auditable manner, consistent with the RFP requirements for data governance, tenant security, and production safety. This updated version incorporates clarifications received from the Aceli consortium regarding Salesforce environment availability, Claude platform confirmation, and operating condition realities."),
 
         // ── 2. Environment Topology ──
         heading("2. Environment Topology"),
@@ -344,8 +344,92 @@ const doc = new Document({
           ],
         }),
 
-        // ── 3. Promotion Pathway ──
-        heading("3. Promotion Pathway"),
+        // ── 3. Salesforce Environment Integration ──
+        heading("3. Salesforce Environment Integration"),
+        body("Per the consortium clarification, Aceli operates on Salesforce Enterprise Edition with custom objects for lender relationship management. A Salesforce sandbox environment is available for development and testing activities. Aceli's internal Salesforce team will support discovery, integration design, testing, and deployment activities. The selected vendor should expect to work collaboratively with Aceli on any required configuration, integration, workflow, or data model enhancements. The LAT scoring framework is currently managed through Google Sheets workflows rather than fully embedded within Salesforce, so integration design must account for the migration of scoring logic from spreadsheets to the governed platform and potentially into Salesforce custom objects."),
+
+        // ── Salesforce Environment Table ──
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          borders: tableBorders,
+          rows: [
+            new TableRow({
+              tableHeader: true,
+              children: [
+                headerCell("Salesforce Environment Component", 25),
+                headerCell("Purpose", 25),
+                headerCell("Availability", 25),
+                headerCell("Access", 25),
+              ],
+            }),
+            new TableRow({ cantSplit: true, children: [
+              dataCell("Salesforce Production", 25),
+              dataCell("System of record for lender relationship data", 25),
+              dataCell("Available for read integration via API", 25),
+              dataCell("Aceli-controlled, read-only for vendor", 25),
+            ]}),
+            new TableRow({ cantSplit: true, children: [
+              dataCell("Salesforce Sandbox", 25),
+              dataCell("Development, testing, integration validation", 25),
+              dataCell("Available for vendor use", 25),
+              dataCell("Collaborative access with Aceli Salesforce team", 25),
+            ]}),
+            new TableRow({ cantSplit: true, children: [
+              dataCell("Salesforce Custom Objects", 25),
+              dataCell("Lender relationship management data", 25),
+              dataCell("To be defined during discovery", 25),
+              dataCell("Configuration via Aceli team with vendor collaboration", 25),
+            ]}),
+          ],
+        }),
+
+        // ── 4. AI Platform Environment ──
+        heading("4. AI Platform Environment"),
+        body("Per the consortium clarification, Aceli operates within the Claude for Nonprofits programme with access to Claude Team/Enterprise environments as part of its approved AI platform. Production LLM processing involving sensitive programme data must occur within approved enterprise environments consistent with governance requirements. Where ongoing platform or licensing costs are required for the proposed solution, these must be clearly identified separately from the implementation budget. Aceli anticipates that approved platform licensing costs would be managed separately from the capped implementation budget."),
+
+        // ── AI Platform Table ──
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          borders: tableBorders,
+          rows: [
+            new TableRow({
+              tableHeader: true,
+              children: [
+                headerCell("AI Platform Component", 25),
+                headerCell("Purpose", 25),
+                headerCell("Environment", 25),
+                headerCell("Cost Classification", 25),
+              ],
+            }),
+            new TableRow({ cantSplit: true, children: [
+              dataCell("Claude Team/Enterprise", 25),
+              dataCell("Production LLM processing for transcription, extraction, summarization", 25),
+              dataCell("Approved enterprise tenant", 25),
+              dataCell("Separate from implementation budget", 25),
+            ]}),
+            new TableRow({ cantSplit: true, children: [
+              dataCell("Claude API", 25),
+              dataCell("Integration layer for application-to-AI communication", 25),
+              dataCell("Approved enterprise tenant", 25),
+              dataCell("Included in platform licensing", 25),
+            ]}),
+            new TableRow({ cantSplit: true, children: [
+              dataCell("AI Transcription Service", 25),
+              dataCell("Voice-to-text with regional accent support", 25),
+              dataCell("Within Claude-approved tenant", 25),
+              dataCell("Separate from implementation budget", 25),
+            ]}),
+            new TableRow({ cantSplit: true, children: [
+              dataCell("AI Extraction Service", 25),
+              dataCell("Structured extraction into six activation areas", 25),
+              dataCell("Within Claude-approved tenant", 25),
+              dataCell("Included in platform licensing", 25),
+            ]}),
+          ],
+        }),
+
+        // ── 5. Promotion Pathway ──
+        heading("5. Promotion Pathway"),
         body("Code and configuration promote through environments in a strict linear pathway:"),
         bulletItem("Local/Dev to Test: automated CI pipeline triggers on merge to develop branch; requires passing unit tests and static analysis"),
         bulletItem("Test to UAT: automated promotion on successful integration test suite completion; requires QA agent sign-off"),
@@ -353,9 +437,10 @@ const doc = new Document({
         bulletItem("Staging to Production: manual promotion by Release Manager after pilot go-live checklist or country rollout readiness sign-off; requires signed release checklist and rollback plan"),
         body("No promotion may skip an environment. Rollback follows the reverse pathway with documented rationale."),
 
-        // ── 4. Data Handling per Environment ──
-        heading("4. Data Handling per Environment"),
+        // ── 6. Data Handling per Environment ──
+        heading("6. Data Handling per Environment"),
         body("Data handling rules are strict and non-negotiable. Local/Dev and Test environments must use only synthetic data generated by approved test data factories. No production data, anonymized or otherwise, may be present in these environments. UAT environments may use anonymized production-like data that has been processed through an approved data masking pipeline. Staging environments may use production mirror data that has been anonymized, with the masking process validated by the Red Team/Compliance Agent. Production environments contain real data and are subject to all data governance constraints including the prohibition on using lender-level or borrower-level data for model training."),
+        body("The current Google Sheets-based LAT data includes the activation methodology, scoring framework, assessment questions across six activation areas, and country-level lender activation assessments. The benchmarking dataset comprises approximately 60,000 records in Google Sheets connected to Power BI. Detailed field structures and scoring logic will be shared under NDA during Sprint 1 discovery. All data migration and handling must respect these confidentiality requirements."),
 
         // ── Data Handling Table ──
         new Table({
@@ -398,13 +483,13 @@ const doc = new Document({
           ],
         }),
 
-        // ── 5. Secret and Configuration Management ──
-        heading("5. Secret and Configuration Management"),
-        body("Secrets, tokens, credentials, and tenant settings must never be hardcoded. All secrets are managed through an approved secrets management solution with environment-specific vaults. Configuration is externalized and environment-driven, with no production credentials in non-production configuration files. Secret rotation follows a defined schedule, and access to production secrets requires explicit authorization from the Delivery Orchestrator and Aceli security. The DevSecOps Agent is responsible for maintaining the secrets management infrastructure and auditing access logs."),
+        // ── 7. Secret and Configuration Management ──
+        heading("7. Secret and Configuration Management"),
+        body("Secrets, tokens, credentials, and tenant settings must never be hardcoded. All secrets are managed through an approved secrets management solution with environment-specific vaults. Configuration is externalized and environment-driven, with no production credentials in non-production configuration files. This includes Claude Team/Enterprise API keys, Salesforce connection credentials, and any integration tokens. Secret rotation follows a defined schedule, and access to production secrets requires explicit authorization from the Delivery Orchestrator and Aceli security. The DevSecOps Agent is responsible for maintaining the secrets management infrastructure and auditing access logs."),
 
-        // ── 6. Access Control and RBAC per Environment ──
-        heading("6. Access Control and RBAC per Environment"),
-        body("Access to each environment is governed by role-based access control aligned to the principle of least privilege."),
+        // ── 8. Access Control and RBAC per Environment ──
+        heading("8. Access Control and RBAC per Environment"),
+        body("Access to each environment is governed by role-based access control aligned to the principle of least privilege. Developers have write access to Local/Dev and read access to Test. QA agents have write access to Test and UAT. Business users have write access to UAT only. Release Managers have promotion authority and write access to Staging. Production access is restricted to authorized Aceli operations personnel and DevSecOps agents for maintenance. Aceli's internal Salesforce team has collaborative access to the Salesforce sandbox for configuration, integration, and testing work. No agent or human may access production data without explicit authorization and logged access."),
 
         // ── RBAC Table ──
         new Table({
@@ -470,12 +555,19 @@ const doc = new Document({
               dataCell("None", 16),
               dataCell("Authorized access", 16),
             ]}),
+            new TableRow({ cantSplit: true, children: [
+              dataCell("Aceli Salesforce Team", 20),
+              dataCell("None", 16),
+              dataCell("None", 16),
+              dataCell("None", 16),
+              dataCell("None", 16),
+              dataCell("Sandbox collaborative", 16),
+            ]}),
           ],
         }),
-        body("No agent or human may access production data without explicit authorization and logged access."),
 
-        // ── 7. CI/CD Pipeline Architecture ──
-        heading("7. CI/CD Pipeline Architecture"),
+        // ── 9. CI/CD Pipeline Architecture ──
+        heading("9. CI/CD Pipeline Architecture"),
         body("The CI/CD pipeline enforces the promotion pathway through automated gates. Every merge to the develop branch triggers: linting, static analysis, unit test execution, and build artifact creation. Successful completion promotes to the Test environment automatically. Integration test completion and QA sign-off triggers promotion to UAT. UAT sign-off enables manual promotion to Staging. Release checklist sign-off enables manual promotion to Production. Rollback is automated from Staging to UAT and from Production to Staging, with documented rationale required."),
 
         // ── CI/CD Pipeline Table ──
@@ -525,13 +617,14 @@ const doc = new Document({
           ],
         }),
 
-        // ── 8. Environment Provisioning and Decommissioning ──
-        heading("8. Environment Provisioning and Decommissioning"),
+        // ── 10. Environment Provisioning and Decommissioning ──
+        heading("10. Environment Provisioning and Decommissioning"),
         body("Environments are provisioned using infrastructure-as-code templates maintained by the DevSecOps Agent. No manual environment setup is permitted. Environment provisioning includes:"),
         bulletItem("Compute and storage resources"),
         bulletItem("Network configuration and firewall rules"),
         bulletItem("Monitoring and logging agents"),
         bulletItem("Security baseline configuration"),
+        bulletItem("Salesforce sandbox integration setup"),
         body("Decommissioning follows an approved process with data wipe verification, resource release, and audit log preservation."),
 
         // ── Provisioning Checklist Table ──
@@ -568,9 +661,68 @@ const doc = new Document({
               dataCell("DevSecOps Agent", 30),
             ]}),
             new TableRow({ cantSplit: true, children: [
+              dataCell("Salesforce Sandbox Integration", 30),
+              dataCell("Configure Salesforce sandbox connectivity and integration endpoints", 40),
+              dataCell("DevSecOps Agent with Aceli Salesforce team", 30),
+            ]}),
+            new TableRow({ cantSplit: true, children: [
               dataCell("Decommissioning", 30),
               dataCell("Data wipe verification, resource release, and audit log preservation", 40),
               dataCell("DevSecOps Agent", 30),
+            ]}),
+          ],
+        }),
+
+        // ── 11. Budget and Licensing Considerations ──
+        heading("11. Budget and Licensing Considerations"),
+        body("Per the consortium clarification, Aceli anticipates that approved platform licensing costs (including Claude Team/Enterprise licensing) would be managed separately from the capped implementation budget. The environment strategy must therefore:"),
+        bulletItem("Clearly separate infrastructure provisioning costs (within implementation budget) from ongoing platform licensing costs (separate from implementation budget)"),
+        bulletItem("Identify all licensing requirements early in Sprint 1 discovery"),
+        bulletItem("Ensure that environment architecture decisions do not create hidden licensing dependencies that exceed the implementation budget"),
+
+        // ── Budget Classification Table ──
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          borders: tableBorders,
+          rows: [
+            new TableRow({
+              tableHeader: true,
+              children: [
+                headerCell("Cost Category", 25),
+                headerCell("Description", 35),
+                headerCell("Budget Classification", 20),
+                headerCell("Timing", 20),
+              ],
+            }),
+            new TableRow({ cantSplit: true, children: [
+              dataCell("Infrastructure Provisioning", 25),
+              dataCell("Compute, storage, networking, and monitoring resources", 35),
+              dataCell("Within implementation budget", 20),
+              dataCell("Sprint 1+", 20),
+            ]}),
+            new TableRow({ cantSplit: true, children: [
+              dataCell("Claude Team/Enterprise Licensing", 25),
+              dataCell("Production LLM processing platform", 35),
+              dataCell("Separate from implementation budget", 20),
+              dataCell("Ongoing", 20),
+            ]}),
+            new TableRow({ cantSplit: true, children: [
+              dataCell("AI Transcription Service", 25),
+              dataCell("Voice-to-text processing with regional accent support", 35),
+              dataCell("Separate from implementation budget", 20),
+              dataCell("Ongoing", 20),
+            ]}),
+            new TableRow({ cantSplit: true, children: [
+              dataCell("Salesforce Licensing", 25),
+              dataCell("Enterprise Edition with sandbox and API access", 35),
+              dataCell("Aceli-managed", 20),
+              dataCell("Existing", 20),
+            ]}),
+            new TableRow({ cantSplit: true, children: [
+              dataCell("Discovery and Identification", 25),
+              dataCell("Complete licensing requirement identification", 35),
+              dataCell("Within implementation budget", 20),
+              dataCell("Sprint 1", 20),
             ]}),
           ],
         }),
