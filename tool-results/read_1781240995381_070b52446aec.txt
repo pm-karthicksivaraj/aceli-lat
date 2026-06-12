@@ -1,0 +1,502 @@
+     1→     1→     1→const {
+     2→     2→     2→  Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+     3→     3→     3→  Header, Footer, PageNumber, AlignmentType, HeadingLevel, WidthType,
+     4→     4→     4→  BorderStyle, ShadingType, SectionType, NumberFormat, TableOfContents,
+     5→     5→     5→  PageBreak, LevelFormat,
+     6→     6→     6→} = require("docx");
+     7→     7→     7→const fs = require("fs");
+     8→     8→     8→
+     9→     9→     9→// ── Palette: GO-1 (Graphite Orange — proposals) ──
+    10→    10→    10→const P = {
+    11→    11→    11→  bg: "1A2330", primary: "FFFFFF", accent: "D4875A",
+    12→    12→    12→  cover: { titleColor: "FFFFFF", subtitleColor: "B0B8C0", metaColor: "90989F", footerColor: "687078" },
+    13→    13→    13→  table: { headerBg: "D4875A", headerText: "FFFFFF", accentLine: "D4875A", innerLine: "DDD0C8", surface: "F8F0EB" },
+    14→    14→    14→  body: "#182030", secondary: "#506070", surface: "#F2F4F6",
+    15→    15→    15→};
+    16→    16→    16→const c = (hex) => hex.replace("#", "");
+    17→    17→    17→
+    18→    18→    18→// ── Cover helpers ──
+    19→    19→    19→const NB = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" };
+    20→    20→    20→const noBorders = { top: NB, bottom: NB, left: NB, right: NB };
+    21→    21→    21→const allNoBorders = { top: NB, bottom: NB, left: NB, right: NB, insideHorizontal: NB, insideVertical: NB };
+    22→    22→    22→
+    23→    23→    23→function calcTitleLayout(title, maxWidthTwips, preferredPt = 40, minPt = 24) {
+    24→    24→    24→  const charWidth = (pt) => pt * 20;
+    25→    25→    25→  const charsPerLine = (pt) => Math.floor(maxWidthTwips / charWidth(pt));
+    26→    26→    26→  let titlePt = preferredPt;
+    27→    27→    27→  let lines;
+    28→    28→    28→  while (titlePt >= minPt) {
+    29→    29→    29→    const cpl = charsPerLine(titlePt);
+    30→    30→    30→    if (cpl < 2) { titlePt -= 2; continue; }
+    31→    31→    31→    lines = splitTitleLines(title, cpl);
+    32→    32→    32→    if (lines.length <= 3) break;
+    33→    33→    33→    titlePt -= 2;
+    34→    34→    34→  }
+    35→    35→    35→  if (!lines || lines.length > 3) {
+    36→    36→    36→    const cpl = charsPerLine(minPt);
+    37→    37→    37→    lines = splitTitleLines(title, cpl);
+    38→    38→    38→    titlePt = minPt;
+    39→    39→    39→  }
+    40→    40→    40→  return { titlePt, titleLines: lines };
+    41→    41→    41→}
+    42→    42→    42→
+    43→    43→    43→function splitTitleLines(title, charsPerLine) {
+    44→    44→    44→  if (title.length <= charsPerLine) return [title];
+    45→    45→    45→  const breakAfter = new Set([..."\u2018\u2019\u201C\u201D,\u3002\u3001\uFF1B\uFF1A\uFF01\uFF1F\u7684\u4E0E\u548C\u53CA\u4E4B\u5728\u4E8E\u4E3A-_-\u2014\u2013\u00B7/ \t"]);
+    46→    46→    46→  const lines = [];
+    47→    47→    47→  let remaining = title;
+    48→    48→    48→  while (remaining.length > charsPerLine) {
+    49→    49→    49→    let breakAt = -1;
+    50→    50→    50→    for (let i = charsPerLine; i >= Math.floor(charsPerLine * 0.6); i--) {
+    51→    51→    51→      if (i < remaining.length && breakAfter.has(remaining[i - 1])) { breakAt = i; break; }
+    52→    52→    52→    }
+    53→    53→    53→    if (breakAt === -1) {
+    54→    54→    54→      const limit = Math.min(remaining.length, Math.ceil(charsPerLine * 1.3));
+    55→    55→    55→      for (let i = charsPerLine + 1; i < limit; i++) {
+    56→    56→    56→        if (breakAfter.has(remaining[i - 1])) { breakAt = i; break; }
+    57→    57→    57→      }
+    58→    58→    58→    }
+    59→    59→    59→    if (breakAt === -1) breakAt = charsPerLine;
+    60→    60→    60→    lines.push(remaining.slice(0, breakAt).trim());
+    61→    61→    61→    remaining = remaining.slice(breakAt).trim();
+    62→    62→    62→  }
+    63→    63→    63→  if (remaining) lines.push(remaining);
+    64→    64→    64→  if (lines.length > 1 && lines[lines.length - 1].length <= 2) {
+    65→    65→    65→    const last = lines.pop();
+    66→    66→    66→    lines[lines.length - 1] += last;
+    67→    67→    67→  }
+    68→    68→    68→  return lines;
+    69→    69→    69→}
+    70→    70→    70→
+    71→    71→    71→function calcCoverSpacing(params) {
+    72→    72→    72→  const { titleLineCount = 1, titlePt = 36, hasSubtitle = false, hasEnglishLabel = false, metaLineCount = 0, fixedHeight = 800, pageHeight = 16838, marginTop = 0, marginBottom = 0 } = params;
+    73→    73→    73→  const SAFETY = 1200;
+    74→    74→    74→  const usableHeight = pageHeight - marginTop - marginBottom - SAFETY;
+    75→    75→    75→  const titleHeight = titleLineCount * (titlePt * 23 + 200);
+    76→    76→    76→  const subtitleHeight = hasSubtitle ? (12 * 23 + 600) : 0;
+    77→    77→    77→  const englishLabelHeight = hasEnglishLabel ? (9 * 23 + 600) : 0;
+    78→    78→    78→  const metaHeight = metaLineCount * (10 * 23 + 100);
+    79→    79→    79→  const implicitParaHeight = 3 * 300;
+    80→    80→    80→  const contentHeight = titleHeight + subtitleHeight + englishLabelHeight + metaHeight + fixedHeight + implicitParaHeight;
+    81→    81→    81→  const remainingSpace = usableHeight - contentHeight;
+    82→    82→    82→  const safeRemaining = Math.max(remainingSpace, 400);
+    83→    83→    83→  const FOOTER_MIN = 800;
+    84→    84→    84→  const rawTop = Math.floor(safeRemaining * 0.45);
+    85→    85→    85→  const rawBottom = Math.floor(safeRemaining * 0.45);
+    86→    86→    86→  const bottomSpacing = Math.max(rawBottom, FOOTER_MIN);
+    87→    87→    87→  const topSpacing = Math.max(rawTop - Math.max(0, FOOTER_MIN - rawBottom), 400);
+    88→    88→    88→  const midSpacing = Math.max(safeRemaining - topSpacing - bottomSpacing, 0);
+    89→    89→    89→  return { topSpacing, midSpacing, bottomSpacing };
+    90→    90→    90→}
+    91→    91→    91→
+    92→    92→    92→function buildCoverR1(config) {
+    93→    93→    93→  const CP = config.palette;
+    94→    94→    94→  const padL = 1200, padR = 800;
+    95→    95→    95→  const availableWidth = 11906 - padL - padR - 300;
+    96→    96→    96→  const { titlePt, titleLines } = calcTitleLayout(config.title, availableWidth, 40, 24);
+    97→    97→    97→  const titleSize = titlePt * 2;
+    98→    98→    98→  const spacing = calcCoverSpacing({
+    99→    99→    99→    titleLineCount: titleLines.length, titlePt,
+   100→   100→   100→    hasSubtitle: !!config.subtitle, hasEnglishLabel: !!config.englishLabel,
+   101→   101→   101→    metaLineCount: (config.metaLines || []).length, fixedHeight: 400,
+   102→   102→   102→  });
+   103→   103→   103→  const accentLeft = { style: BorderStyle.SINGLE, size: 8, color: CP.accent, space: 12 };
+   104→   104→   104→  const children = [];
+   105→   105→   105→  children.push(new Paragraph({ spacing: { before: spacing.topSpacing } }));
+   106→   106→   106→  if (config.englishLabel) {
+   107→   107→   107→    children.push(new Paragraph({
+   108→   108→   108→      indent: { left: padL, right: padR }, spacing: { after: 500 },
+   109→   109→   109→      border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: CP.accent, space: 8 } },
+   110→   110→   110→      children: [new TextRun({ text: config.englishLabel.split("").join("  "), size: 18, color: CP.accent, font: { ascii: "Calibri", eastAsia: "SimHei" }, characterSpacing: 40 })],
+   111→   111→   111→    }));
+   112→   112→   112→  }
+   113→   113→   113→  for (let i = 0; i < titleLines.length; i++) {
+   114→   114→   114→    children.push(new Paragraph({
+   115→   115→   115→      indent: { left: padL },
+   116→   116→   116→      spacing: { after: i < titleLines.length - 1 ? 100 : 300, line: Math.ceil(titlePt * 23), lineRule: "atLeast" },
+   117→   117→   117→      children: [new TextRun({ text: titleLines[i], size: titleSize, bold: true, color: CP.titleColor, font: { eastAsia: "SimHei", ascii: "Arial" } })],
+   118→   118→   118→    }));
+   119→   119→   119→  }
+   120→   120→   120→  if (config.subtitle) {
+   121→   121→   121→    children.push(new Paragraph({
+   122→   122→   122→      indent: { left: padL }, spacing: { after: 800 },
+   123→   123→   123→      children: [new TextRun({ text: config.subtitle, size: 24, color: CP.subtitleColor, font: { eastAsia: "Microsoft YaHei", ascii: "Arial" } })],
+   124→   124→   124→    }));
+   125→   125→   125→  }
+   126→   126→   126→  for (const line of (config.metaLines || [])) {
+   127→   127→   127→    children.push(new Paragraph({
+   128→   128→   128→      indent: { left: padL + 200 }, spacing: { after: 80 },
+   129→   129→   129→      border: { left: accentLeft },
+   130→   130→   130→      children: [new TextRun({ text: line, size: 24, color: CP.metaColor, font: { eastAsia: "Microsoft YaHei", ascii: "Arial" } })],
+   131→   131→   131→    }));
+   132→   132→   132→  }
+   133→   133→   133→  children.push(new Paragraph({ spacing: { before: spacing.bottomSpacing } }));
+   134→   134→   134→  children.push(new Paragraph({
+   135→   135→   135→    indent: { left: padL, right: padR },
+   136→   136→   136→    border: { top: { style: BorderStyle.SINGLE, size: 2, color: CP.accent, space: 8 } },
+   137→   137→   137→    spacing: { before: 200 },
+   138→   138→   138→    children: [
+   139→   139→   139→      new TextRun({ text: config.footerLeft || "", size: 16, color: CP.footerColor, font: { ascii: "Arial" } }),
+   140→   140→   140→      new TextRun({ text: "                                        " }),
+   141→   141→   141→      new TextRun({ text: config.footerRight || "", size: 16, color: CP.footerColor, font: { ascii: "Arial" } }),
+   142→   142→   142→    ],
+   143→   143→   143→  }));
+   144→   144→   144→  return [new Table({
+   145→   145→   145→    width: { size: 100, type: WidthType.PERCENTAGE },
+   146→   146→   146→    borders: allNoBorders,
+   147→   147→   147→    rows: [new TableRow({
+   148→   148→   148→      height: { value: 16838, rule: "exact" },
+   149→   149→   149→      children: [new TableCell({ shading: { type: ShadingType.CLEAR, fill: CP.bg }, borders: noBorders, children })],
+   150→   150→   150→    })],
+   151→   151→   151→  })];
+   152→   152→   152→}
+   153→   153→   153→
+   154→   154→   154→// ── Document content helpers ──
+   155→   155→   155→function heading(text, level = HeadingLevel.HEADING_1) {
+   156→   156→   156→  return new Paragraph({
+   157→   157→   157→    heading: level,
+   158→   158→   158→    spacing: { before: level === HeadingLevel.HEADING_1 ? 360 : 240, after: 120, line: 312 },
+   159→   159→   159→    children: [new TextRun({ text, bold: true, color: c(P.body), font: { ascii: "Times New Roman", eastAsia: "SimHei" } })],
+   160→   160→   160→  });
+   161→   161→   161→}
+   162→   162→   162→
+   163→   163→   163→function body(text) {
+   164→   164→   164→  return new Paragraph({
+   165→   165→   165→    alignment: AlignmentType.JUSTIFIED,
+   166→   166→   166→    indent: { firstLine: 480 },
+   167→   167→   167→    spacing: { line: 312, after: 80 },
+   168→   168→   168→    children: [new TextRun({ text, size: 24, color: c(P.body), font: { ascii: "Times New Roman", eastAsia: "SimSun" } })],
+   169→   169→   169→  });
+   170→   170→   170→}
+   171→   171→   171→
+   172→   172→   172→function bulletItem(text, ref = "bullet-list") {
+   173→   173→   173→  return new Paragraph({
+   174→   174→   174→    bullet: { level: 0 },
+   175→   175→   175→    spacing: { line: 312, after: 40 },
+   176→   176→   176→    children: [new TextRun({ text, size: 24, color: c(P.body), font: { ascii: "Times New Roman", eastAsia: "SimSun" } })],
+   177→   177→   177→  });
+   178→   178→   178→}
+   179→   179→   179→
+   180→   180→   180→// ── Table helpers ──
+   181→   181→   181→function headerCell(text, widthPct) {
+   182→   182→   182→  return new TableCell({
+   183→   183→   183→    width: { size: widthPct, type: WidthType.PERCENTAGE },
+   184→   184→   184→    shading: { type: ShadingType.CLEAR, fill: P.table.headerBg },
+   185→   185→   185→    borders: {
+   186→   186→   186→      top: { style: BorderStyle.SINGLE, size: 1, color: P.table.headerBg },
+   187→   187→   187→      bottom: { style: BorderStyle.SINGLE, size: 1, color: P.table.headerBg },
+   188→   188→   188→      left: { style: BorderStyle.SINGLE, size: 1, color: P.table.headerBg },
+   189→   189→   189→      right: { style: BorderStyle.SINGLE, size: 1, color: P.table.headerBg },
+   190→   190→   190→    },
+   191→   191→   191→    children: [new Paragraph({
+   192→   192→   192→      spacing: { line: 312, before: 40, after: 40 },
+   193→   193→   193→      children: [new TextRun({ text, bold: true, size: 22, color: P.table.headerText, font: { ascii: "Times New Roman", eastAsia: "SimHei" } })],
+   194→   194→   194→    })],
+   195→   195→   195→  });
+   196→   196→   196→}
+   197→   197→   197→
+   198→   198→   198→function dataCell(text, widthPct) {
+   199→   199→   199→  return new TableCell({
+   200→   200→   200→    width: { size: widthPct, type: WidthType.PERCENTAGE },
+   201→   201→   201→    shading: { type: ShadingType.CLEAR, fill: "FFFFFF" },
+   202→   202→   202→    borders: {
+   203→   203→   203→      top: { style: BorderStyle.SINGLE, size: 1, color: P.table.innerLine },
+   204→   204→   204→      bottom: { style: BorderStyle.SINGLE, size: 1, color: P.table.innerLine },
+   205→   205→   205→      left: { style: BorderStyle.SINGLE, size: 1, color: P.table.innerLine },
+   206→   206→   206→      right: { style: BorderStyle.SINGLE, size: 1, color: P.table.innerLine },
+   207→   207→   207→    },
+   208→   208→   208→    children: [new Paragraph({
+   209→   209→   209→      spacing: { line: 312, before: 40, after: 40 },
+   210→   210→   210→      children: [new TextRun({ text, size: 22, color: c(P.body), font: { ascii: "Times New Roman", eastAsia: "SimSun" } })],
+   211→   211→   211→    })],
+   212→   212→   212→  });
+   213→   213→   213→}
+   214→   214→   214→
+   215→   215→   215→// ── Page setup ──
+   216→   216→   216→const pgSize = { width: 11906, height: 16838 };
+   217→   217→   217→const pgMargin = { top: 1440, bottom: 1440, left: 1701, right: 1417 };
+   218→   218→   218→
+   219→   219→   219→// ── Cover config ──
+   220→   220→   220→const coverConfig = {
+   221→   221→   221→  title: "Aceli LAT Delivery Charter",
+   222→   222→   222→  subtitle: "Production Build Governance and Operating Model",
+   223→   223→   223→  englishLabel: "DELIVERY CHARTER",
+   224→   224→   224→  metaLines: [
+   225→   225→   225→    "Project: Aceli Africa LAT Platform",
+   226→   226→   226→    "Version: 1.0",
+   227→   227→   227→    "Date: 2026-06-12",
+   228→   228→   228→    "Classification: Confidential",
+   229→   229→   229→  ],
+   230→   230→   230→  footerLeft: "Aceli Africa",
+   231→   231→   231→  footerRight: "Sprint 0 Deliverable",
+   232→   232→   232→  palette: P.cover,
+   233→   233→   233→};
+   234→   234→   234→
+   235→   235→   235→// ── Build Document ──
+   236→   236→   236→const doc = new Document({
+   237→   237→   237→  styles: {
+   238→   238→   238→    default: {
+   239→   239→   239→      document: {
+   240→   240→   240→        run: { font: { ascii: "Times New Roman", eastAsia: "SimSun" }, size: 24, color: c(P.body) },
+   241→   241→   241→        paragraph: { spacing: { line: 312 } },
+   242→   242→   242→      },
+   243→   243→   243→      heading1: { run: { font: { ascii: "Times New Roman", eastAsia: "SimHei" }, size: 32, bold: true, color: c(P.body) }, paragraph: { spacing: { before: 360, after: 160, line: 312 } } },
+   244→   244→   244→      heading2: { run: { font: { ascii: "Times New Roman", eastAsia: "SimHei" }, size: 28, bold: true, color: c(P.body) }, paragraph: { spacing: { before: 240, after: 120, line: 312 } } },
+   245→   245→   245→      heading3: { run: { font: { ascii: "Times New Roman", eastAsia: "SimHei" }, size: 24, bold: true, color: c(P.body) }, paragraph: { spacing: { before: 200, after: 100, line: 312 } } },
+   246→   246→   246→    },
+   247→   247→   247→  },
+   248→   248→   248→  numbering: {
+   249→   249→   249→    config: [
+   250→   250→   250→      { reference: "bullet-list", levels: [{ level: 0, format: LevelFormat.BULLET, text: "\u2022", alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 720, hanging: 360 } } } }] },
+   251→   251→   251→    ],
+   252→   252→   252→  },
+   253→   253→   253→  sections: [
+   254→   254→   254→    // ── Section 1: Cover (no page numbers) ──
+   255→   255→   255→    {
+   256→   256→   256→      properties: { page: { size: pgSize, margin: { top: 0, bottom: 0, left: 0, right: 0 } } },
+   257→   257→   257→      children: buildCoverR1(coverConfig),
+   258→   258→   258→    },
+   259→   259→   259→    // ── Section 2: TOC (Roman numerals) ──
+   260→   260→   260→    {
+   261→   261→   261→      properties: { type: SectionType.NEXT_PAGE, page: { size: pgSize, margin: pgMargin, pageNumbers: { start: 1, formatType: NumberFormat.UPPER_ROMAN } } },
+   262→   262→   262→      footers: { default: new Footer({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ children: [PageNumber.CURRENT], size: 18, color: "808080" })] })] }) },
+   263→   263→   263→      children: [
+   264→   264→   264→        new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 480, after: 360 }, children: [new TextRun({ text: "Table of Contents", bold: true, size: 32, font: { ascii: "Times New Roman", eastAsia: "SimHei" } })] }),
+   265→   265→   265→        new TableOfContents("Table of Contents", { hyperlink: true, headingStyleRange: "1-3" }),
+   266→   266→   266→        new Paragraph({ spacing: { before: 200 }, children: [new TextRun({ text: "Note: This Table of Contents is generated via field codes. To ensure page number accuracy after editing, please right-click the TOC and select \"Update Field.\"", italics: true, size: 18, color: "888888" })] }),
+   267→   267→   267→        new Paragraph({ children: [new PageBreak()] }),
+   268→   268→   268→      ],
+   269→   269→   269→    },
+   270→   270→   270→    // ── Section 3: Body (Arabic from 1) ──
+   271→   271→   271→    {
+   272→   272→   272→      properties: { type: SectionType.NEXT_PAGE, page: { size: pgSize, margin: pgMargin, pageNumbers: { start: 1, formatType: NumberFormat.DECIMAL } } },
+   273→   273→   273→      headers: { default: new Header({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Aceli LAT Delivery Charter", size: 18, color: "808080" })] })] }) },
+   274→   274→   274→      footers: { default: new Footer({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ children: [PageNumber.CURRENT], size: 18, color: "808080" })] })] }) },
+   275→   275→   275→      children: [
+   276→   276→   276→        // ── 1. Charter Purpose and Authority ──
+   277→   277→   277→        heading("1. Charter Purpose and Authority"),
+   278→   278→   278→        body("This Delivery Charter establishes the authority, scope, governance, and operating model for the production build of the Aceli Lender Activation Tool (LAT). It is issued by the Delivery Orchestrator and endorsed by the Aceli Africa program sponsor. The charter defines the boundaries within which the multi-agent engineering organization operates and sets the expectations for quality, documentation, traceability, and operational readiness that every sprint must meet."),
+   279→   279→   279→
+   280→   280→   280→        // ── 2. Program Scope ──
+   281→   281→   281→        heading("2. Program Scope"),
+   282→   282→   282→        body("The program encompasses the end-to-end design, build, test, migration, deployment, and operational handover of the LAT platform across five Aceli Africa countries. The scope includes: a mobile-first responsive web application with offline capabilities; AI-powered transcription and extraction workflows with human-in-the-loop review; controlled Salesforce integration with bidirectional synchronization; a controlled benchmarking data feed pathway; data migration from existing Google Sheets processes; training, change management, and administrator handover; and post-rollout warranty support for a minimum period as defined in the warranty support model."),
+   283→   283→   283→        body("The scope explicitly excludes: replacement of Salesforce as the system of record; replacement of Power BI as the analytics layer; training of vendor-owned or third-party models on Aceli data; auto-commit of AI-generated updates without human review; and any shadow databases or unmanaged reconciliation routines."),
+   284→   284→   284→
+   285→   285→   285→        // ── 3. Delivery Model ──
+   286→   286→   286→        heading("3. Delivery Model"),
+   287→   287→   287→        body("The delivery follows a production-first, documentation-first, audit-ready, human-in-the-loop model. Every sprint must produce working software, controlled documentation, test evidence, and operational artifacts. There are no documentation-only sprints and no code-only sprints. The definition of done requires code, tests, documentation, security checks, and release notes for every increment."),
+   288→   288→   288→        body("The sprint cadence is two weeks, with daily automated AI sync for status, blockers, dependencies, and quality updates. Weekly governance reviews cover compliance, scope, architecture, and delivery risk. The program spans 10 sprints across four phases: Phase 0 (Weeks 1-4) for discovery and design; Phase 1 (Weeks 5-13) for pilot build and deployment; Phase 2 (Weeks 14-19) for phased multi-country rollout; and Phase 3 (Weeks 20-24+) for warranty, handover, and continuous improvement."),
+   289→   289→   289→
+   290→   290→   290→        // ── Phase Overview Table ──
+   291→   291→   291→        new Table({
+   292→   292→   292→          width: { size: 100, type: WidthType.PERCENTAGE },
+   293→   293→   293→          borders: {
+   294→   294→   294→            top: { style: BorderStyle.SINGLE, size: 1, color: P.table.accentLine },
+   295→   295→   295→            bottom: { style: BorderStyle.SINGLE, size: 1, color: P.table.accentLine },
+   296→   296→   296→            left: { style: BorderStyle.SINGLE, size: 1, color: P.table.accentLine },
+   297→   297→   297→            right: { style: BorderStyle.SINGLE, size: 1, color: P.table.accentLine },
+   298→   298→   298→            insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: P.table.innerLine },
+   299→   299→   299→            insideVertical: { style: BorderStyle.SINGLE, size: 1, color: P.table.innerLine },
+   300→   300→   300→          },
+   301→   301→   301→          rows: [
+   302→   302→   302→            new TableRow({
+   303→   303→   303→              tableHeader: true,
+   304→   304→   304→              children: [
+   305→   305→   305→                headerCell("Phase", 20),
+   306→   306→   306→                headerCell("Weeks", 15),
+   307→   307→   307→                headerCell("Focus", 65),
+   308→   308→   308→              ],
+   309→   309→   309→            }),
+   310→   310→   310→            new TableRow({ cantSplit: true, children: [dataCell("Phase 0", 20), dataCell("1\u20134", 15), dataCell("Discovery and Design", 65)] }),
+   311→   311→   311→            new TableRow({ cantSplit: true, children: [dataCell("Phase 1", 20), dataCell("5\u201313", 15), dataCell("Pilot Build and Deployment", 65)] }),
+   312→   312→   312→            new TableRow({ cantSplit: true, children: [dataCell("Phase 2", 20), dataCell("14\u201319", 15), dataCell("Phased Multi-Country Rollout", 65)] }),
+   313→   313→   313→            new TableRow({ cantSplit: true, children: [dataCell("Phase 3", 20), dataCell("20\u201324+", 15), dataCell("Warranty, Handover, and Continuous Improvement", 65)] }),
+   314→   314→   314→          ],
+   315→   315→   315→        }),
+   316→   316→   316→
+   317→   317→   317→        // ── 4. Roles and Responsibilities ──
+   318→   318→   318→        heading("4. Roles and Responsibilities"),
+   319→   319→   319→        body("The delivery organization comprises 15 core agent roles: Delivery Orchestrator (program coordination and governance), Product Owner (requirements ownership and prioritization), Business Analyst (current-state analysis and user stories), Solution Architect (architecture decisions and integration design), Salesforce Integration Agent (Salesforce API and schema work), AI/ML Workflow Agent (transcription, extraction, and prompt engineering), Frontend Engineering Agent (mobile-first web application), Backend/API Engineering Agent (service layer and API development), Data Migration Agent (Google Sheets migration), DevSecOps Agent (CI/CD, security, environments), QA Automation Agent (testing and quality gates), Technical Writer Agent (documentation), Release Manager Agent (release packaging and governance), Change Management Agent (training and adoption), and Red Team/Compliance Agent (security review and compliance validation)."),
+   320→   320→   320→        body("Each role has defined responsibilities, approval authorities, and escalation paths. The Delivery Orchestrator maintains the program backlog, manages cross-sprint dependencies, and enforces quality gates."),
+   321→   321→   321→
+   322→   322→   322→        // ── Roles Table ──
+   323→   323→   323→        new Table({
+   324→   324→   324→          width: { size: 100, type: WidthType.PERCENTAGE },
+   325→   325→   325→          borders: {
+   326→   326→   326→            top: { style: BorderStyle.SINGLE, size: 1, color: P.table.accentLine },
+   327→   327→   327→            bottom: { style: BorderStyle.SINGLE, size: 1, color: P.table.accentLine },
+   328→   328→   328→            left: { style: BorderStyle.SINGLE, size: 1, color: P.table.accentLine },
+   329→   329→   329→            right: { style: BorderStyle.SINGLE, size: 1, color: P.table.accentLine },
+   330→   330→   330→            insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: P.table.innerLine },
+   331→   331→   331→            insideVertical: { style: BorderStyle.SINGLE, size: 1, color: P.table.innerLine },
+   332→   332→   332→          },
+   333→   333→   333→          rows: [
+   334→   334→   334→            new TableRow({
+   335→   335→   335→              tableHeader: true,
+   336→   336→   336→              children: [
+   337→   337→   337→                headerCell("Role", 35),
+   338→   338→   338→                headerCell("Primary Responsibility", 65),
+   339→   339→   339→              ],
+   340→   340→   340→            }),
+   341→   341→   341→            new TableRow({ cantSplit: true, children: [dataCell("Delivery Orchestrator", 35), dataCell("Program coordination and governance", 65)] }),
+   342→   342→   342→            new TableRow({ cantSplit: true, children: [dataCell("Product Owner", 35), dataCell("Requirements ownership and prioritization", 65)] }),
+   343→   343→   343→            new TableRow({ cantSplit: true, children: [dataCell("Business Analyst", 35), dataCell("Current-state analysis and user stories", 65)] }),
+   344→   344→   344→            new TableRow({ cantSplit: true, children: [dataCell("Solution Architect", 35), dataCell("Architecture decisions and integration design", 65)] }),
+   345→   345→   345→            new TableRow({ cantSplit: true, children: [dataCell("Salesforce Integration Agent", 35), dataCell("Salesforce API and schema work", 65)] }),
+   346→   346→   346→            new TableRow({ cantSplit: true, children: [dataCell("AI/ML Workflow Agent", 35), dataCell("Transcription, extraction, and prompt engineering", 65)] }),
+   347→   347→   347→            new TableRow({ cantSplit: true, children: [dataCell("Frontend Engineering Agent", 35), dataCell("Mobile-first web application", 65)] }),
+   348→   348→   348→            new TableRow({ cantSplit: true, children: [dataCell("Backend/API Engineering Agent", 35), dataCell("Service layer and API development", 65)] }),
+   349→   349→   349→            new TableRow({ cantSplit: true, children: [dataCell("Data Migration Agent", 35), dataCell("Google Sheets migration", 65)] }),
+   350→   350→   350→            new TableRow({ cantSplit: true, children: [dataCell("DevSecOps Agent", 35), dataCell("CI/CD, security, environments", 65)] }),
+   351→   351→   351→            new TableRow({ cantSplit: true, children: [dataCell("QA Automation Agent", 35), dataCell("Testing and quality gates", 65)] }),
+   352→   352→   352→            new TableRow({ cantSplit: true, children: [dataCell("Technical Writer Agent", 35), dataCell("Documentation", 65)] }),
+   353→   353→   353→            new TableRow({ cantSplit: true, children: [dataCell("Release Manager Agent", 35), dataCell("Release packaging and governance", 65)] }),
+   354→   354→   354→            new TableRow({ cantSplit: true, children: [dataCell("Change Management Agent", 35), dataCell("Training and adoption", 65)] }),
+   355→   355→   355→            new TableRow({ cantSplit: true, children: [dataCell("Red Team/Compliance Agent", 35), dataCell("Security review and compliance validation", 65)] }),
+   356→   356→   356→          ],
+   357→   357→   357→        }),
+   358→   358→   358→
+   359→   359→   359→        // ── 5. Quality Gates and Definition of Done ──
+   360→   360→   360→        heading("5. Quality Gates and Definition of Done"),
+   361→   361→   361→        heading("5.1 Mandatory Quality Gates", HeadingLevel.HEADING_2),
+   362→   362→   362→        body("Every sprint must pass the following mandatory quality gates:"),
+   363→   363→   363→        bulletItem("Requirements traceability updated"),
+   364→   364→   364→        bulletItem("Architecture conformance check passed"),
+   365→   365→   365→        bulletItem("Security review completed for changed surfaces"),
+   366→   366→   366→        bulletItem("Static analysis and linting passed"),
+   367→   367→   367→        bulletItem("Automated tests passed at agreed threshold"),
+   368→   368→   368→        bulletItem("Documentation updated"),
+   369→   369→   369→        bulletItem("Release notes generated"),
+   370→   370→   370→        bulletItem("Rollback plan updated if release affects production path"),
+   371→   371→   371→        bulletItem("Audit coverage check passed for user and AI flows"),
+   372→   372→   372→
+   373→   373→   373→        heading("5.2 Definition of Done", HeadingLevel.HEADING_2),
+   374→   374→   374→        body("Definition of done requires: code merged, tests passed, documentation updated, release note published, deployment evidence exists, rollback plan exists, and approvers sign off."),
+   375→   375→   375→
+   376→   376→   376→        // ── 6. Governance and Escalation ──
+   377→   377→   377→        heading("6. Governance and Escalation"),
+   378→   378→   378→        body("The governance model operates at three levels: strategic (program sponsor and Aceli leadership for scope, budget, and timeline decisions), tactical (Delivery Orchestrator and Solution Architect for architecture, integration, and delivery risk decisions), and operational (individual agents for day-to-day technical decisions within approved scope)."),
+   379→   379→   379→
+   380→   380→   380→        heading("6.1 Governance Levels", HeadingLevel.HEADING_2),
+   381→   381→   381→
+   382→   382→   382→        // ── Governance Table ──
+   383→   383→   383→        new Table({
+   384→   384→   384→          width: { size: 100, type: WidthType.PERCENTAGE },
+   385→   385→   385→          borders: {
+   386→   386→   386→            top: { style: BorderStyle.SINGLE, size: 1, color: P.table.accentLine },
+   387→   387→   387→            bottom: { style: BorderStyle.SINGLE, size: 1, color: P.table.accentLine },
+   388→   388→   388→            left: { style: BorderStyle.SINGLE, size: 1, color: P.table.accentLine },
+   389→   389→   389→            right: { style: BorderStyle.SINGLE, size: 1, color: P.table.accentLine },
+   390→   390→   390→            insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: P.table.innerLine },
+   391→   391→   391→            insideVertical: { style: BorderStyle.SINGLE, size: 1, color: P.table.innerLine },
+   392→   392→   392→          },
+   393→   393→   393→          rows: [
+   394→   394→   394→            new TableRow({
+   395→   395→   395→              tableHeader: true,
+   396→   396→   396→              children: [
+   397→   397→   397→                headerCell("Level", 20),
+   398→   398→   398→                headerCell("Participants", 35),
+   399→   399→   399→                headerCell("Decisions", 45),
+   400→   400→   400→              ],
+   401→   401→   401→            }),
+   402→   402→   402→            new TableRow({ cantSplit: true, children: [dataCell("Strategic", 20), dataCell("Program Sponsor, Aceli Leadership", 35), dataCell("Scope, budget, and timeline decisions", 45)] }),
+   403→   403→   403→            new TableRow({ cantSplit: true, children: [dataCell("Tactical", 20), dataCell("Delivery Orchestrator, Solution Architect", 35), dataCell("Architecture, integration, and delivery risk decisions", 45)] }),
+   404→   404→   404→            new TableRow({ cantSplit: true, children: [dataCell("Operational", 20), dataCell("Individual Agents", 35), dataCell("Day-to-day technical decisions within approved scope", 45)] }),
+   405→   405→   405→          ],
+   406→   406→   406→        }),
+   407→   407→   407→
+   408→   408→   408→        heading("6.2 Escalation Model", HeadingLevel.HEADING_2),
+   409→   409→   409→        body("Escalation follows the confidence threshold model: confidence above 0.90 allows autonomous execution within approved scope; confidence 0.70\u20130.89 allows autonomous draft with mandatory peer review; confidence below 0.70 requires escalation to human-in-the-loop or lead architect review. Any security, data governance, or production data task always requires human review."),
+   410→   410→   410→
+   411→   411→   411→        // ── Escalation Table ──
+   412→   412→   412→        new Table({
+   413→   413→   413→          width: { size: 100, type: WidthType.PERCENTAGE },
+   414→   414→   414→          borders: {
+   415→   415→   415→            top: { style: BorderStyle.SINGLE, size: 1, color: P.table.accentLine },
+   416→   416→   416→            bottom: { style: BorderStyle.SINGLE, size: 1, color: P.table.accentLine },
+   417→   417→   417→            left: { style: BorderStyle.SINGLE, size: 1, color: P.table.accentLine },
+   418→   418→   418→            right: { style: BorderStyle.SINGLE, size: 1, color: P.table.accentLine },
+   419→   419→   419→            insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: P.table.innerLine },
+   420→   420→   420→            insideVertical: { style: BorderStyle.SINGLE, size: 1, color: P.table.innerLine },
+   421→   421→   421→          },
+   422→   422→   422→          rows: [
+   423→   423→   423→            new TableRow({
+   424→   424→   424→              tableHeader: true,
+   425→   425→   425→              children: [
+   426→   426→   426→                headerCell("Confidence Range", 25),
+   427→   427→   427→                headerCell("Action", 75),
+   428→   428→   428→              ],
+   429→   429→   429→            }),
+   430→   430→   430→            new TableRow({ cantSplit: true, children: [dataCell("Above 0.90", 25), dataCell("Autonomous execution within approved scope", 75)] }),
+   431→   431→   431→            new TableRow({ cantSplit: true, children: [dataCell("0.70 \u2013 0.89", 25), dataCell("Autonomous draft with mandatory peer review", 75)] }),
+   432→   432→   432→            new TableRow({ cantSplit: true, children: [dataCell("Below 0.70", 25), dataCell("Escalation to human-in-the-loop or lead architect review", 75)] }),
+   433→   433→   433→            new TableRow({ cantSplit: true, children: [dataCell("Security / Data Governance / Production Data", 25), dataCell("Always requires human review regardless of confidence", 75)] }),
+   434→   434→   434→          ],
+   435→   435→   435→        }),
+   436→   436→   436→
+   437→   437→   437→        // ── 7. Risk Management ──
+   438→   438→   438→        heading("7. Risk Management"),
+   439→   439→   439→        body("Risks are tracked in a structured risk register with probability, impact, mitigation strategy, and owner. Key program risks include:"),
+   440→   440→   440→
+   441→   441→   441→        // ── Risk Table ──
+   442→   442→   442→        new Table({
+   443→   443→   443→          width: { size: 100, type: WidthType.PERCENTAGE },
+   444→   444→   444→          borders: {
+   445→   445→   445→            top: { style: BorderStyle.SINGLE, size: 1, color: P.table.accentLine },
+   446→   446→   446→            bottom: { style: BorderStyle.SINGLE, size: 1, color: P.table.accentLine },
+   447→   447→   447→            left: { style: BorderStyle.SINGLE, size: 1, color: P.table.accentLine },
+   448→   448→   448→            right: { style: BorderStyle.SINGLE, size: 1, color: P.table.accentLine },
+   449→   449→   449→            insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: P.table.innerLine },
+   450→   450→   450→            insideVertical: { style: BorderStyle.SINGLE, size: 1, color: P.table.innerLine },
+   451→   451→   451→          },
+   452→   452→   452→          rows: [
+   453→   453→   453→            new TableRow({
+   454→   454→   454→              tableHeader: true,
+   455→   455→   455→              children: [
+   456→   456→   456→                headerCell("Risk Area", 30),
+   457→   457→   457→                headerCell("Mitigation Strategy", 70),
+   458→   458→   458→              ],
+   459→   459→   459→            }),
+   460→   460→   460→            new TableRow({ cantSplit: true, children: [dataCell("Connectivity challenges in field environments", 30), dataCell("Robust offline-first architecture", 70)] }),
+   461→   461→   461→            new TableRow({ cantSplit: true, children: [dataCell("Salesforce API governance", 30), dataCell("Coordination with Aceli administrators", 70)] }),
+   462→   462→   462→            new TableRow({ cantSplit: true, children: [dataCell("AI transcription accuracy for diverse accents", 30), dataCell("Testing and calibration across dialects", 70)] }),
+   463→   463→   463→            new TableRow({ cantSplit: true, children: [dataCell("Data migration quality from Google Sheets", 30), dataCell("Full migration sub-program treatment", 70)] }),
+   464→   464→   464→            new TableRow({ cantSplit: true, children: [dataCell("Change management and adoption risk", 30), dataCell("Structured training and hypercare", 70)] }),
+   465→   465→   465→            new TableRow({ cantSplit: true, children: [dataCell("Legal and information security gating", 30), dataCell("Must be satisfied before sensitive data access", 70)] }),
+   466→   466→   466→          ],
+   467→   467→   467→        }),
+   468→   468→   468→
+   469→   469→   469→        // ── 8. Communication and Reporting ──
+   470→   470→   470→        heading("8. Communication and Reporting"),
+   471→   471→   471→        body("Daily AI sync provides automated status, blocker, dependency, and quality updates. Weekly governance reviews cover compliance, scope, architecture, and delivery risk. End-of-sprint outputs include working increment, evidence pack, updated documentation, and release notes. All communications must be traceable and audit-ready."),
+   472→   472→   472→
+   473→   473→   473→        // ── Communication Table ──
+   474→   474→   474→        new Table({
+   475→   475→   475→          width: { size: 100, type: WidthType.PERCENTAGE },
+   476→   476→   476→          borders: {
+   477→   477→   477→            top: { style: BorderStyle.SINGLE, size: 1, color: P.table.accentLine },
+   478→   478→   478→            bottom: { style: BorderStyle.SINGLE, size: 1, color: P.table.accentLine },
+   479→   479→   479→            left: { style: BorderStyle.SINGLE, size: 1, color: P.table.accentLine },
+   480→   480→   480→            right: { style: BorderStyle.SINGLE, size: 1, color: P.table.accentLine },
+   481→   481→   481→            insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: P.table.innerLine },
+   482→   482→   482→            insideVertical: { style: BorderStyle.SINGLE, size: 1, color: P.table.innerLine },
+   483→   483→   483→          },
+   484→   484→   484→          rows: [
+   485→   485→   485→            new TableRow({
+   486→   486→   486→              tableHeader: true,
+   487→   487→   487→              children: [
+   488→   488→   488→                headerCell("Cadence", 25),
+   489→   489→   489→                headerCell("Scope", 40),
+   490→   490→   490→                headerCell("Output", 35),
+   491→   491→   491→              ],
+   492→   492→   492→            }),
+   493→   493→   493→            new TableRow({ cantSplit: true, children: [dataCell("Daily", 25), dataCell("Status, blockers, dependencies, quality", 40), dataCell("Automated AI sync", 35)] }),
+   494→   494→   494→            new TableRow({ cantSplit: true, children: [dataCell("Weekly", 25), dataCell("Compliance, scope, architecture, delivery risk", 40), dataCell("Governance review", 35)] }),
+   495→   495→   495→            new TableRow({ cantSplit: true, children: [dataCell("End-of-Sprint", 25), dataCell("Increment, evidence, documentation, release notes", 40), dataCell("Sprint deliverable pack", 35)] }),
+   496→   496→   496→          ],
+   497→   497→   497→        }),
+   498→   498→   498→
+   499→   499→   499→        // ── 9. Charter Acceptance ──
+   500→   500→   500→        heading("9. Charter Acceptance"),
+
+[showing lines 1-500 of 513; use offset=501 with limit to continue reading]
