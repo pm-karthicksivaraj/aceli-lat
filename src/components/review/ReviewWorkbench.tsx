@@ -83,7 +83,7 @@ export function ReviewWorkbench() {
   const [editedText, setEditedText] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const fetchDraftsRef = useRef<() => Promise<void>>()
+  const fetchDraftsRef = useRef<() => Promise<void>>(undefined)
 
   useEffect(() => {
     let cancelled = false

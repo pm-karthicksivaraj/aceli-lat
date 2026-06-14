@@ -5,7 +5,7 @@ import { ClipboardCheck, Shield, Database, Link2, Activity, Headphones, Graduati
 import { getLabel } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Progress, ProgressTrack, ProgressIndicator, ProgressLabel, ProgressValue } from '@/components/ui/progress'
+import { Progress, ProgressTrack, ProgressIndicator, ProgressLabel } from '@/components/ui/progress'
 
 interface HandoverItem {
   id: string
@@ -85,7 +85,6 @@ export function AdminHandoverView() {
         <CardContent className="space-y-3">
           <Progress value={overallPct}>
             <ProgressLabel>Overall Completion</ProgressLabel>
-            <ProgressValue>{overallPct}%</ProgressValue>
             <ProgressTrack>
               <ProgressIndicator
                 style={{ width: `${overallPct}%` }}
@@ -93,6 +92,7 @@ export function AdminHandoverView() {
               />
             </ProgressTrack>
           </Progress>
+          <span className="text-sm font-medium tabular-nums">{overallPct}%</span>
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <span>{data.filter((d) => d.status === 'verified').length} verified</span>
             <span>{data.filter((d) => d.status === 'completed').length} completed</span>
@@ -126,7 +126,6 @@ export function AdminHandoverView() {
                 {/* Section progress bar */}
                 <Progress value={pct}>
                   <ProgressLabel className="sr-only">{config.label} progress</ProgressLabel>
-                  <ProgressValue>{pct}%</ProgressValue>
                   <ProgressTrack>
                     <ProgressIndicator
                       style={{ width: `${pct}%` }}
@@ -134,6 +133,7 @@ export function AdminHandoverView() {
                     />
                   </ProgressTrack>
                 </Progress>
+                <span className="text-sm font-medium tabular-nums">{pct}%</span>
 
                 {/* Items */}
                 {sectionItems.length === 0 ? (
@@ -168,7 +168,7 @@ export function AdminHandoverView() {
                         Last completed: {new Date(
                           sectionItems.filter((i) => i.completionDate).sort((a, b) =>
                             new Date(b.completionDate as string).getTime() - new Date(a.completionDate as string).getTime()
-                          )[0]?.completionDate
+                          )[0]?.completionDate as string
                         ).toLocaleDateString()}
                       </span>
                     )}
@@ -177,7 +177,7 @@ export function AdminHandoverView() {
                         Last verified: {new Date(
                           sectionItems.filter((i) => i.verificationDate).sort((a, b) =>
                             new Date(b.verificationDate as string).getTime() - new Date(a.verificationDate as string).getTime()
-                          )[0]?.verificationDate
+                          )[0]?.verificationDate as string
                         ).toLocaleDateString()}
                       </span>
                     )}

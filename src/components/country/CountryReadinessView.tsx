@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Globe, CheckCircle2, XCircle, FileCheck, Plus, Pencil, Trash2, Loader2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Progress, ProgressTrack, ProgressIndicator, ProgressLabel, ProgressValue } from '@/components/ui/progress'
+import { Progress, ProgressTrack, ProgressIndicator, ProgressLabel } from '@/components/ui/progress'
 import {
   Table,
   TableBody,
@@ -334,7 +334,6 @@ export function CountryReadinessView() {
                             <div className="flex items-center gap-2">
                               <Progress value={pct} className="flex-1">
                                 <ProgressLabel className="sr-only">{country} readiness</ProgressLabel>
-                                <ProgressValue>{pct}%</ProgressValue>
                                 <ProgressTrack>
                                   <ProgressIndicator
                                     style={{ width: `${pct}%` }}
@@ -342,6 +341,7 @@ export function CountryReadinessView() {
                                   />
                                 </ProgressTrack>
                               </Progress>
+                              <span className="text-sm font-medium tabular-nums">{pct}%</span>
                             </div>
                           </TableCell>
                           <TableCell>
@@ -416,7 +416,6 @@ export function CountryReadinessView() {
 
                     <Progress value={pct}>
                       <ProgressLabel className="sr-only">{country} readiness</ProgressLabel>
-                      <ProgressValue>{pct}%</ProgressValue>
                       <ProgressTrack>
                         <ProgressIndicator
                           style={{ width: `${pct}%` }}

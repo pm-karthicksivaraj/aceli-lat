@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Progress, ProgressTrack, ProgressIndicator, ProgressLabel, ProgressValue } from '@/components/ui/progress'
+import { Progress, ProgressTrack, ProgressIndicator, ProgressLabel } from '@/components/ui/progress'
 import {
   Dialog,
   DialogTrigger,
@@ -388,7 +388,6 @@ export function KPIDashboard() {
                 {/* Progress bar */}
                 <Progress value={getProgressPercent(item)}>
                   <ProgressLabel className="sr-only">{item.kpiName} progress</ProgressLabel>
-                  <ProgressValue>{Math.round(getProgressPercent(item))}%</ProgressValue>
                   <ProgressTrack>
                     <ProgressIndicator
                       style={{ width: `${getProgressPercent(item)}%` }}
@@ -402,6 +401,7 @@ export function KPIDashboard() {
                     />
                   </ProgressTrack>
                 </Progress>
+                <span className="text-sm font-medium tabular-nums">{Math.round(getProgressPercent(item))}%</span>
 
                 <div className="text-xs text-muted-foreground">
                   Unit: {item.unit} · Source: {item.source}

@@ -15,7 +15,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Progress, ProgressTrack, ProgressIndicator, ProgressLabel, ProgressValue } from '@/components/ui/progress'
+import { Progress, ProgressTrack, ProgressIndicator, ProgressLabel } from '@/components/ui/progress'
 import {
   Dialog,
   DialogTrigger,
@@ -370,12 +370,7 @@ export function ScorecardView() {
                         return (
                           <div key={dim.key} className="space-y-1.5">
                             <Progress value={value}>
-                              <div className="flex items-center justify-between w-full">
-                                <ProgressLabel className="text-xs">{dim.label}</ProgressLabel>
-                                <ProgressValue className="text-xs tabular-nums">
-                                  {value.toFixed(1)}
-                                </ProgressValue>
-                              </div>
+                              <ProgressLabel className="text-xs">{dim.label}</ProgressLabel>
                               <ProgressTrack className="h-2">
                                 <ProgressIndicator
                                   className={dim.color}
@@ -383,6 +378,9 @@ export function ScorecardView() {
                                 />
                               </ProgressTrack>
                             </Progress>
+                            <div className="flex items-center justify-between w-full">
+                              <span className="text-xs font-medium tabular-nums">{value.toFixed(1)}</span>
+                            </div>
                           </div>
                         )
                       })}

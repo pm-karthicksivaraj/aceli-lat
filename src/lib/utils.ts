@@ -226,7 +226,6 @@ export const DISPLAY_LABELS: Record<string, string> = {
   process: 'Process',
   technology: 'Technology',
   user_experience: 'User Experience',
-  data_quality: 'Data Quality',
   // CI status
   identified: 'Identified',
   analyzed: 'Analyzed',

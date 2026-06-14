@@ -5,7 +5,7 @@ import { Waves, MapPin, Calendar, CheckCircle2, XCircle } from 'lucide-react'
 import { getLabel } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Progress, ProgressTrack, ProgressIndicator, ProgressLabel, ProgressValue } from '@/components/ui/progress'
+import { Progress, ProgressTrack, ProgressIndicator, ProgressLabel } from '@/components/ui/progress'
 
 interface RolloutWave {
   id: string
@@ -135,7 +135,6 @@ export function RolloutWaveView() {
                         {/* Progress */}
                         <Progress value={pct}>
                           <ProgressLabel className="sr-only">{wave.country} readiness</ProgressLabel>
-                          <ProgressValue>{pct}%</ProgressValue>
                           <ProgressTrack>
                             <ProgressIndicator
                               style={{ width: `${pct}%` }}
@@ -143,6 +142,7 @@ export function RolloutWaveView() {
                             />
                           </ProgressTrack>
                         </Progress>
+                        <span className="text-sm font-medium tabular-nums">{pct}%</span>
 
                         {/* Sign-off */}
                         {readiness.signOffDate && (

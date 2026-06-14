@@ -186,7 +186,7 @@ export function Month12ReviewView() {
                         {badge.icon}
                         {badge.label}
                       </Badge>
-                      <Select value={status} onValueChange={(v) => handleStatusChange(section, v)}>
+                      <Select value={status} onValueChange={(v) => handleStatusChange(section, v ?? '')}>
                         <SelectTrigger size="sm" className="w-[120px]">
                           <SelectValue />
                         </SelectTrigger>
