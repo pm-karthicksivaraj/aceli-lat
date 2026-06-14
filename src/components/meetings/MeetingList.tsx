@@ -39,6 +39,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { getLabel } from '@/lib/utils'
 
 interface Lender {
   id: string
@@ -422,18 +423,18 @@ export function MeetingList() {
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-[10px] capitalize">
-                          {m.type.replace('_', ' ')}
+                          {getLabel(m.type)}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-xs">{m.country}</TableCell>
                       <TableCell>
                         <Badge variant={statusBadgeVariant(m.status)} className="text-[10px]">
-                          {m.status.replace('_', ' ')}
+                          {getLabel(m.status)}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge variant={syncBadgeVariant(m.syncStatus)} className="text-[10px]">
-                          {m.syncStatus}
+                          {getLabel(m.syncStatus)}
                         </Badge>
                       </TableCell>
                     </TableRow>

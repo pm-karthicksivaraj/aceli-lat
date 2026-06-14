@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { MessageSquare, Plus, Filter } from 'lucide-react'
+import { getLabel } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -136,7 +137,7 @@ export function FeedbackView() {
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
               {categories.map((c) => (
-                <SelectItem key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</SelectItem>
+                <SelectItem key={c} value={c}>{getLabel(c)}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -147,7 +148,7 @@ export function FeedbackView() {
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
               {statuses.map((s) => (
-                <SelectItem key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</SelectItem>
+                <SelectItem key={s} value={s}>{getLabel(s)}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -186,7 +187,7 @@ export function FeedbackView() {
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {categories.map((c) => (
-                        <SelectItem key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</SelectItem>
+                        <SelectItem key={c} value={c}>{getLabel(c)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -197,7 +198,7 @@ export function FeedbackView() {
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {priorities.map((p) => (
-                        <SelectItem key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</SelectItem>
+                        <SelectItem key={p} value={p}>{getLabel(p)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -238,13 +239,13 @@ export function FeedbackView() {
                   </CardTitle>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <Badge variant={CATEGORY_VARIANTS[item.category] ?? 'outline'}>
-                      {item.category}
+                      {getLabel(item.category)}
                     </Badge>
                     <Badge variant={PRIORITY_VARIANTS[item.priority] ?? 'outline'}>
-                      {item.priority}
+                      {getLabel(item.priority)}
                     </Badge>
                     <Badge variant={STATUS_VARIANTS[item.status] ?? 'outline'}>
-                      {item.status}
+                      {getLabel(item.status)}
                     </Badge>
                   </div>
                 </div>

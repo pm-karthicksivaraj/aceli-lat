@@ -41,6 +41,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useAppStore } from '@/store/useAppStore'
+import { getLabel } from '@/lib/utils'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -214,7 +215,7 @@ export function DashboardView() {
       statusCounts[m.status] = (statusCounts[m.status] || 0) + 1
     })
     return Object.entries(statusCounts).map(([name, value]) => ({
-      name: name.replace('_', ' '),
+      name: getLabel(name),
       value,
     }))
   }, [meetings])
@@ -240,7 +241,7 @@ export function DashboardView() {
       statusCounts[s.status] = (statusCounts[s.status] || 0) + 1
     })
     return Object.entries(statusCounts).map(([name, value]) => ({
-      name: name.replace('_', ' '),
+      name: getLabel(name),
       value,
     }))
   }, [syncRecords])
@@ -938,7 +939,7 @@ export function DashboardView() {
                           variant={meetingStatusBadge(item.status)}
                           className="shrink-0 text-[10px]"
                         >
-                          {item.status.replace(/_/g, ' ')}
+                          {getLabel(item.status)}
                         </Badge>
                       </div>
                       <p className="text-[10px] text-muted-foreground mt-0.5">

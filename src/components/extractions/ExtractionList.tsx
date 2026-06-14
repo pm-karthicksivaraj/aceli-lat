@@ -30,6 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { getLabel } from '@/lib/utils'
 
 interface ExtractionDraft {
   id: string
@@ -297,7 +298,7 @@ export function ExtractionList() {
                         </TableCell>
                         <TableCell>
                           <Badge variant={statusBadgeVariant(draft.status)} className="text-[10px]">
-                            {draft.status.replace('_', ' ')}
+                            {getLabel(draft.status)}
                           </Badge>
                         </TableCell>
                         <TableCell>

@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useAppStore } from '@/store/useAppStore'
+import { getLabel } from '@/lib/utils'
 
 interface NarrativeNote {
   id: string
@@ -220,10 +221,10 @@ export function MeetingDetail({ meetingId }: MeetingDetailProps) {
           <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-2xl font-bold tracking-tight">{meeting.title}</h2>
             <Badge variant={statusBadgeVariant(meeting.status)}>
-              {meeting.status.replace('_', ' ')}
+              {getLabel(meeting.status)}
             </Badge>
             <Badge variant="outline" className="text-[10px] capitalize">
-              {meeting.type.replace('_', ' ')}
+              {getLabel(meeting.type)}
             </Badge>
           </div>
           <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-muted-foreground">
@@ -333,7 +334,7 @@ export function MeetingDetail({ meetingId }: MeetingDetailProps) {
                         </Badge>
                         <div className="flex items-center gap-2">
                           <Badge variant="secondary" className="text-[10px] capitalize">
-                            {n.source.replace('_', ' ')}
+                            {getLabel(n.source)}
                           </Badge>
                           <span className="text-[10px] text-muted-foreground">
                             {new Date(n.createdAt).toLocaleString()}
@@ -382,7 +383,7 @@ export function MeetingDetail({ meetingId }: MeetingDetailProps) {
                             variant={vm.status === 'transcribed' ? 'default' : 'secondary'}
                             className="text-[10px]"
                           >
-                            {vm.status}
+                            {getLabel(vm.status)}
                           </Badge>
                         </div>
                         {vm.transcript && (
@@ -435,7 +436,7 @@ export function MeetingDetail({ meetingId }: MeetingDetailProps) {
                             variant={ex.status === 'approved' ? 'default' : ex.status === 'rejected' ? 'destructive' : 'secondary'}
                             className="text-[10px] shrink-0"
                           >
-                            {ex.status.replace('_', ' ')}
+                            {getLabel(ex.status)}
                           </Badge>
                         </div>
 

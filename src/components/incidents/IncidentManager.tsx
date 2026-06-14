@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { AlertOctagon, Plus } from 'lucide-react'
+import { getLabel } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -264,7 +265,7 @@ export function IncidentManager() {
                         </TableCell>
                         <TableCell>
                           <Badge className={STATUS_BADGE[incident.status] ?? STATUS_BADGE.reported}>
-                            {incident.status.replace('_', ' ')}
+                            {getLabel(incident.status)}
                           </Badge>
                         </TableCell>
                         <TableCell>{incident.country ?? '—'}</TableCell>

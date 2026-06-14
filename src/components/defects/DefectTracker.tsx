@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Bug, Plus, Filter } from 'lucide-react'
+import { getLabel } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -143,7 +144,7 @@ export function DefectTracker() {
             <SelectContent>
               <SelectItem value="all">All Severity</SelectItem>
               {severities.map((s) => (
-                <SelectItem key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</SelectItem>
+                <SelectItem key={s} value={s}>{getLabel(s)}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -154,7 +155,7 @@ export function DefectTracker() {
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
               {categories.map((c) => (
-                <SelectItem key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</SelectItem>
+                <SelectItem key={c} value={c}>{getLabel(c)}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -165,7 +166,7 @@ export function DefectTracker() {
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
               {statuses.map((s) => (
-                <SelectItem key={s} value={s}>{s.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}</SelectItem>
+                <SelectItem key={s} value={s}>{getLabel(s)}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -204,7 +205,7 @@ export function DefectTracker() {
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {severities.map((s) => (
-                        <SelectItem key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</SelectItem>
+                        <SelectItem key={s} value={s}>{getLabel(s)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -215,7 +216,7 @@ export function DefectTracker() {
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {categories.map((c) => (
-                        <SelectItem key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</SelectItem>
+                        <SelectItem key={c} value={c}>{getLabel(c)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -258,7 +259,7 @@ export function DefectTracker() {
             <Card key={sev}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
-                  <Bug className="size-3.5" /> {sev}
+                  <Bug className="size-3.5" /> {getLabel(sev)}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -296,15 +297,15 @@ export function DefectTracker() {
                       <TableCell className="font-medium max-w-[200px] truncate">{defect.title}</TableCell>
                       <TableCell>
                         <Badge variant={SEVERITY_VARIANTS[defect.severity] ?? 'outline'}>
-                          {defect.severity}
+                          {getLabel(defect.severity)}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">{defect.category}</Badge>
+                        <Badge variant="outline">{getLabel(defect.category)}</Badge>
                       </TableCell>
                       <TableCell>
                         <Badge variant={STATUS_VARIANTS[defect.status] ?? 'outline'}>
-                          {defect.status.replace('_', ' ')}
+                          {getLabel(defect.status)}
                         </Badge>
                       </TableCell>
                       <TableCell>{defect.assignee ?? '—'}</TableCell>

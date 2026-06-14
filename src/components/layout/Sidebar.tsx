@@ -56,7 +56,6 @@ interface NavItem {
 interface NavGroup {
   label: string
   icon: React.ElementType
-  sprint: string
   items: NavItem[]
 }
 
@@ -64,7 +63,6 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Platform',
     icon: Zap,
-    sprint: 'Sprint 3',
     items: [
       { view: 'dashboard', icon: LayoutDashboard },
       { view: 'audit-logs', icon: ScrollText },
@@ -73,7 +71,6 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Field Capture',
     icon: ClipboardCheck,
-    sprint: 'Sprint 4',
     items: [
       { view: 'lenders', icon: Building2 },
       { view: 'meetings', icon: CalendarDays },
@@ -84,7 +81,6 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Review & Governance',
     icon: ShieldCheck,
-    sprint: 'Sprint 5',
     items: [
       { view: 'review-workbench', icon: ClipboardCheck },
       { view: 'exceptions', icon: AlertTriangle },
@@ -94,7 +90,6 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'HQ & Analytics',
     icon: BarChart3,
-    sprint: 'Sprint 6',
     items: [
       { view: 'hq-dashboard', icon: BarChart3 },
       { view: 'scorecards', icon: Trophy },
@@ -105,7 +100,6 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Rollout',
     icon: Rocket,
-    sprint: 'Sprint 7-8',
     items: [
       { view: 'kpis', icon: Target },
       { view: 'defects', icon: Bug },
@@ -120,7 +114,6 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Operations',
     icon: ShieldAlert,
-    sprint: 'Sprint 9',
     items: [
       { view: 'warranty', icon: ShieldAlert },
       { view: 'incidents', icon: Siren },
@@ -134,7 +127,6 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Outcomes',
     icon: LineChart,
-    sprint: 'Sprint 10',
     items: [
       { view: 'outcome-kpis', icon: Target },
       { view: 'adoption-metrics', icon: Users },
@@ -179,9 +171,6 @@ function NavGroupSection({
       >
         <GroupIcon className="size-3.5 shrink-0" />
         <span className="flex-1 text-left truncate">{group.label}</span>
-        <span className="text-[10px] font-normal normal-case tracking-normal text-muted-foreground/60 hidden lg:inline">
-          {group.sprint}
-        </span>
         {open ? (
           <ChevronDown className="size-3.5 shrink-0 ml-1" />
         ) : (

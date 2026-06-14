@@ -22,6 +22,7 @@ import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAppStore } from '@/store/useAppStore'
+import { getLabel } from '@/lib/utils'
 
 interface Lender {
   id: string
@@ -202,7 +203,7 @@ export function LenderDetail({ lenderId }: LenderDetailProps) {
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <h2 className="text-2xl font-bold tracking-tight">{lender.name}</h2>
-            <Badge variant={statusBadgeVariant(lender.status)}>{lender.status}</Badge>
+            <Badge variant={statusBadgeVariant(lender.status)}>{getLabel(lender.status)}</Badge>
           </div>
           <p className="text-sm text-muted-foreground">
             {institutionTypeLabel(lender.institutionType)} · {lender.country}
@@ -282,7 +283,7 @@ export function LenderDetail({ lenderId }: LenderDetailProps) {
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
                     <p className="text-muted-foreground">Source</p>
-                    <Badge variant="outline" className="mt-1 text-[10px]">{lender.source}</Badge>
+                    <Badge variant="outline" className="mt-1 text-[10px]">{getLabel(lender.source)}</Badge>
                   </div>
                   <div>
                     <p className="text-muted-foreground">Portfolio Size</p>
@@ -332,12 +333,12 @@ export function LenderDetail({ lenderId }: LenderDetailProps) {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{m.title}</p>
                         <p className="text-xs text-muted-foreground">
-                          {new Date(m.date).toLocaleDateString()} · {m.type.replace('_', ' ')}
+                          {new Date(m.date).toLocaleDateString()} · {getLabel(m.type)}
                           {m.location && ` · ${m.location}`}
                         </p>
                       </div>
                       <Badge variant={meetingStatusBadge(m.status)} className="shrink-0 text-[10px]">
-                        {m.status.replace('_', ' ')}
+                        {getLabel(m.status)}
                       </Badge>
                     </div>
                   ))}
@@ -452,7 +453,7 @@ export function LenderDetail({ lenderId }: LenderDetailProps) {
                         variant={rec.status === 'completed' ? 'default' : rec.status === 'failed' ? 'destructive' : 'secondary'}
                         className="text-[10px] shrink-0"
                       >
-                        {rec.status}
+                        {getLabel(rec.status)}
                       </Badge>
                     </div>
                   ))}

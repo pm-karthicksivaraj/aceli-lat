@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Briefcase, Eye, CheckCircle2, Send, FileText } from 'lucide-react'
+import { getLabel } from '@/lib/utils'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -182,7 +183,7 @@ export function ExecutiveReviewView() {
             <div key={section}>
               <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
                 <div className="size-2 rounded-full bg-primary" />
-                {SECTION_LABELS[section] ?? section.replace(/_/g, ' ')}
+                {SECTION_LABELS[section] ?? getLabel(section)}
                 <Badge variant="outline" className="text-[10px]">{items.length}</Badge>
               </h3>
               <div className="grid gap-4 sm:grid-cols-2">

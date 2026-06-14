@@ -8,6 +8,7 @@ import {
   Loader2,
   Filter,
 } from 'lucide-react'
+import { getLabel } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -279,7 +280,7 @@ export function ExceptionQueue() {
                           <Badge variant={sev.variant}>{sev.label}</Badge>
                         </TableCell>
                         <TableCell className="font-medium text-xs">
-                          {ex.type.replace(/_/g, ' ')}
+                          {getLabel(ex.type)}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
                           {ex.entity}
@@ -340,7 +341,7 @@ export function ExceptionQueue() {
               <p className="text-xs font-medium text-muted-foreground">Exception</p>
               <p className="text-sm">{actionException.message}</p>
               <p className="text-xs text-muted-foreground">
-                {actionException.entity} · {actionException.type.replace(/_/g, ' ')}
+                {actionException.entity} · {getLabel(actionException.type)}
               </p>
             </div>
           )}

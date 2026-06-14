@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { RefreshCw, Plus } from 'lucide-react'
+import { getLabel } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -311,7 +312,7 @@ export function ContinuousImprovementView() {
                         </div>
                       </TableCell>
                       <TableCell className="capitalize text-xs">
-                        {CATEGORY_LABELS[item.category] ?? item.category.replace(/_/g, ' ')}
+                        {CATEGORY_LABELS[item.category] ?? getLabel(item.category)}
                       </TableCell>
                       <TableCell className="capitalize text-xs">
                         {SOURCE_LABELS[item.source] ?? item.source}
@@ -323,7 +324,7 @@ export function ContinuousImprovementView() {
                       </TableCell>
                       <TableCell>
                         <Badge className={STATUS_BADGE[item.status] ?? STATUS_BADGE.identified}>
-                          {item.status.replace(/_/g, ' ')}
+                          {getLabel(item.status)}
                         </Badge>
                       </TableCell>
                       <TableCell>{item.owner ?? '—'}</TableCell>

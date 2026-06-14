@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Database, Plus, HardDrive, Clock, CheckCircle2, XCircle, ShieldCheck } from 'lucide-react'
+import { getLabel } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -212,7 +213,7 @@ export function BackupManager() {
                         <TableCell>
                           <Badge className={`${cfg.className} gap-1`}>
                             {cfg.icon}
-                            {backup.status.replace('_', ' ')}
+                            {getLabel(backup.status)}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-muted-foreground">

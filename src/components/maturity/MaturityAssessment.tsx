@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { BarChart3, TrendingUp, Target, Lightbulb } from 'lucide-react'
+import { getLabel } from '@/lib/utils'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress, ProgressIndicator, ProgressTrack } from '@/components/ui/progress'
@@ -180,7 +181,7 @@ export function MaturityAssessment() {
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base flex items-center gap-2">
                       <span>{meta.icon}</span>
-                      {item.dimension.charAt(0).toUpperCase() + item.dimension.slice(1)}
+                      {getLabel(item.dimension)}
                     </CardTitle>
                     <Badge variant="outline" className="text-xs">
                       Level {item.currentLevel}/{item.targetLevel}

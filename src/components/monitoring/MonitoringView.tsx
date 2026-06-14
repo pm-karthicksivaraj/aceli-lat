@@ -25,6 +25,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { getLabel } from '@/lib/utils'
 
 interface MonitoringAlert {
   id: string
@@ -191,7 +192,7 @@ export function MonitoringView() {
           <SelectContent>
             <SelectItem value="all">All Types</SelectItem>
             {alertTypes.map((t) => (
-              <SelectItem key={t} value={t}>{t.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}</SelectItem>
+              <SelectItem key={t} value={t}>{getLabel(t)}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -202,7 +203,7 @@ export function MonitoringView() {
           <SelectContent>
             <SelectItem value="all">All Severity</SelectItem>
             {severities.map((s) => (
-              <SelectItem key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</SelectItem>
+              <SelectItem key={s} value={s}>{getLabel(s)}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -213,7 +214,7 @@ export function MonitoringView() {
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
             {alertStatuses.map((s) => (
-              <SelectItem key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</SelectItem>
+              <SelectItem key={s} value={s}>{getLabel(s)}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -306,10 +307,10 @@ export function MonitoringView() {
                   <div className="flex items-start justify-between gap-2">
                     <CardTitle className="flex items-center gap-2 text-sm">
                       <SevIcon className={`size-4 ${sevConfig.color}`} />
-                      {alert.type.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                      {getLabel(alert.type)}
                     </CardTitle>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <Badge variant={sevConfig.variant}>{alert.severity}</Badge>
+                      <Badge variant={sevConfig.variant}>{getLabel(alert.severity)}</Badge>
                       <Badge
                         variant={
                           alert.status === 'resolved'
@@ -319,7 +320,7 @@ export function MonitoringView() {
                               : 'destructive'
                         }
                       >
-                        {alert.status}
+                        {getLabel(alert.status)}
                       </Badge>
                     </div>
                   </div>

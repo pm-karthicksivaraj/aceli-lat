@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Bug } from 'lucide-react'
+import { getLabel } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -177,7 +178,7 @@ export function KnownIssuesView() {
                         <TableCell className="capitalize">{issue.category}</TableCell>
                         <TableCell>
                           <Badge className={STATUS_BADGE[issue.status] ?? STATUS_BADGE.open}>
-                            {issue.status.replace(/_/g, ' ')}
+                            {getLabel(issue.status)}
                           </Badge>
                         </TableCell>
                         <TableCell className="max-w-[200px]">

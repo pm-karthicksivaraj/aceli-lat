@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Ticket, Plus, Filter } from 'lucide-react'
+import { getLabel } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -185,7 +186,7 @@ export function SupportTicketView() {
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
               {categories.map((c) => (
-                <SelectItem key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</SelectItem>
+                <SelectItem key={c} value={c}>{getLabel(c)}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -196,7 +197,7 @@ export function SupportTicketView() {
             <SelectContent>
               <SelectItem value="all">All Priority</SelectItem>
               {priorities.map((p) => (
-                <SelectItem key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</SelectItem>
+                <SelectItem key={p} value={p}>{getLabel(p)}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -207,7 +208,7 @@ export function SupportTicketView() {
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
               {statuses.map((s) => (
-                <SelectItem key={s} value={s}>{s.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}</SelectItem>
+                <SelectItem key={s} value={s}>{getLabel(s)}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -246,7 +247,7 @@ export function SupportTicketView() {
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {categories.map((c) => (
-                        <SelectItem key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</SelectItem>
+                        <SelectItem key={c} value={c}>{getLabel(c)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -257,7 +258,7 @@ export function SupportTicketView() {
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {priorities.map((p) => (
-                        <SelectItem key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</SelectItem>
+                        <SelectItem key={p} value={p}>{getLabel(p)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -308,15 +309,15 @@ export function SupportTicketView() {
                       <TableCell className="font-medium max-w-[200px] truncate">{ticket.title}</TableCell>
                       <TableCell>
                         <Badge variant={PRIORITY_VARIANTS[ticket.priority] ?? 'outline'}>
-                          {ticket.priority}
+                          {getLabel(ticket.priority)}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">{ticket.category}</Badge>
+                        <Badge variant="outline">{getLabel(ticket.category)}</Badge>
                       </TableCell>
                       <TableCell>
                         <Badge variant={STATUS_VARIANTS[ticket.status] ?? 'outline'}>
-                          {ticket.status.replace('_', ' ')}
+                          {getLabel(ticket.status)}
                         </Badge>
                       </TableCell>
                       <TableCell>{ticket.reporter?.name ?? '—'}</TableCell>

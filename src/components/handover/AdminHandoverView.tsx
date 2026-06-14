@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { ClipboardCheck, Shield, Database, Link2, Activity, Headphones, GraduationCap } from 'lucide-react'
+import { getLabel } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress, ProgressTrack, ProgressIndicator, ProgressLabel, ProgressValue } from '@/components/ui/progress'
@@ -152,7 +153,7 @@ export function AdminHandoverView() {
                           </div>
                         </div>
                         <Badge variant={STATUS_VARIANTS[item.status] ?? 'outline'}>
-                          {item.status.replace('_', ' ')}
+                          {getLabel(item.status)}
                         </Badge>
                       </div>
                     ))}

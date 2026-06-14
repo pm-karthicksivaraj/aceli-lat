@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Wrench, Plus, Tag, Calendar } from 'lucide-react'
+import { getLabel } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -284,7 +285,7 @@ export function MaintenanceRoadmap() {
                           {item.effort}
                         </Badge>
                         <Badge className={STATUS_BADGE[item.status] ?? STATUS_BADGE.backlog}>
-                          {item.status.replace('_', ' ')}
+                          {getLabel(item.status)}
                         </Badge>
                         {item.targetDate && (
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Waves, MapPin, Calendar, CheckCircle2, XCircle } from 'lucide-react'
+import { getLabel } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress, ProgressTrack, ProgressIndicator, ProgressLabel, ProgressValue } from '@/components/ui/progress'
@@ -84,7 +85,7 @@ export function RolloutWaveView() {
                         {wave.country}
                       </CardTitle>
                       <Badge variant={WAVE_STATUS_VARIANTS[wave.status] ?? 'outline'}>
-                        {wave.status.replace('_', ' ')}
+                        {getLabel(wave.status)}
                       </Badge>
                     </div>
                   </CardHeader>

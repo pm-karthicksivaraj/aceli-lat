@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { Users, TrendingUp, TrendingDown, Minus, Plus, Pencil, Trash2, Loader2 } from 'lucide-react'
+import { getLabel } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress, ProgressIndicator, ProgressTrack } from '@/components/ui/progress'
@@ -335,7 +336,7 @@ export function AdoptionMetricsView() {
                         <div className="flex items-center justify-between">
                           <CardTitle className="text-sm flex items-center gap-2">
                             <span>{METRIC_ICONS[m.metric] ?? '📊'}</span>
-                            {METRIC_LABELS[m.metric] ?? m.metric.replace(/_/g, ' ')}
+                            {METRIC_LABELS[m.metric] ?? getLabel(m.metric)}
                           </CardTitle>
                           <div className="flex items-center gap-1">
                             <Button variant="ghost" size="icon-sm" onClick={() => openEdit(m)}>
