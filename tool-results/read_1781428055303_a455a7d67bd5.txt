@@ -1,0 +1,476 @@
+     1→# Aceli LAT Production Build — Work Log
+     2→
+     3→---
+     4→Task ID: sprint-0
+     5→Agent: Delivery Orchestrator (Main)
+     6→Task: Execute Sprint 0 — Mobilization, Governance, and Delivery Setup
+     7→
+     8→Work Log:
+     9→- Read and analyzed the full Aceli LAT Production Sprint Plan (822 lines)
+    10→- Identified Sprint 0 deliverables: 8 documentation artifacts + 1 release note
+    11→- Loaded docx skill and all required references (design-system, common-rules, docx-js-core, report scene, TOC)
+    12→- Generated Vision Brief (Aceli_LAT_Vision_Brief.docx) — 0 errors on postcheck
+    13→- Generated Delivery Charter (Aceli_LAT_Delivery_Charter.docx) — 0 errors on postcheck
+    14→- Generated Governance Model (Aceli_LAT_Governance_Model.docx) — 0 errors on postcheck
+    15→- Generated Documentation Index (Aceli_LAT_Documentation_Index.docx) — 0 errors on postcheck
+    16→- Generated RTM v1 (Aceli_LAT_RTM_v1.docx) — 0 errors on postcheck
+    17→- Generated Environment Strategy (Aceli_LAT_Environment_Strategy.docx) — 0 errors on postcheck
+    18→- Generated Security & Tenant Approval Checklist (Aceli_LAT_Security_Tenant_Approval_Checklist.docx) — 0 errors on postcheck
+    19→- Generated AI Agent Operating Rules (Aceli_LAT_AI_Agent_Operating_Rules.docx) — 0 errors on postcheck
+    20→- Generated v0.1.0-mobilization Release Notes (Aceli_LAT_v0.1.0_Mobilization_Release_Notes.docx) — 9/9 passed
+    21→- Ran TOC post-processing (add_toc_placeholders.py --auto) on all documents with TOC
+    22→- Ran postcheck.py on all documents — all pass with 0 errors
+    23→
+    24→Stage Summary:
+    25→- Sprint 0 mobilization deliverables complete
+    26→- All 9 documents produced and quality-verified
+    27→- Release v0.1.0-mobilization tagged
+    28→- All documents saved to /home/z/my-project/download/sprint0/
+    29→- Next: Sprint 1 — Discovery, Business Analysis, and Baseline Capture
+    30→
+    31→---
+    32→Task ID: sprint-0-update
+    33→Agent: Delivery Orchestrator (Main)
+    34→Task: Update 4 Sprint 0 deliverables with Aceli consortium meeting feedback
+    35→
+    36→Work Log:
+    37→- Read Aceli consortium feedback document (aceli_Proposal.docx) — 10 clarification items
+    38→- Identified 4 Sprint 0 deliverables requiring updates: Vision Brief, RTM v1, Environment Strategy, Security & Tenant Approval Checklist
+    39→- Updated Vision Brief with: ~55 institutions detail, language/code-switching context, pilot country selection logic, Claude confirmation, collaborative baseline methodology, Salesforce Enterprise Edition details, benchmarking dataset (~60K records), intermittent connectivity conditions, stakeholder interview scope, LAT schema description. Added new sections 4.6 (Flexible Lender Model Support) and 10 (Consortium Feedback Integration) — 0 errors
+    40→- Updated RTM v1 with: 10 new CL-XXX requirements (CL-001 through CL-010), 4 new BR requirements (BR-006 through BR-009), 2 new FR requirements (FR-016, FR-017), 2 new NFR requirements (NFR-009, NFR-010), 5 updated requirements, new Section 8 (Consortium Clarification Cross-Reference table) — 0 errors
+    41→- Updated Environment Strategy with: new Section 3 (Salesforce Environment Integration), new Section 4 (AI Platform Environment), new Section 11 (Budget and Licensing Considerations), updated data handling for Google Sheets/NDA context — 0 errors
+    42→- Updated Security & Tenant Approval Checklist with: expanded pre-approved platform conditions, new budget separation review criterion (4.9), updated approval process steps, new prohibition on training data use, new Section 8 (Consortium Clarification Impacts) — 0 errors
+    43→
+    44→Stage Summary:
+    45→- All 4 documents updated with consortium feedback and quality-verified (0 errors each)
+    46→- 18 new requirements added to RTM v1 from consortium clarifications
+    47→- Key architectural implications documented: Salesforce custom objects, Claude for Nonprofits, intermittent connectivity, ~60K benchmarking records, collaborative baseline methodology
+    48→- All updated documents saved to /home/z/my-project/download/sprint0/
+    49→- Sprint 0 deliverables now fully aligned with consortium clarifications
+    50→- Ready for Sprint 1
+    51→
+    52→---
+    53→Task ID: layout-components
+    54→Agent: Layout Components Agent
+    55→Task: Create Header.tsx and Sidebar.tsx layout components
+    56→
+    57→Work Log:
+    58→- Read worklog.md, types.ts, useAppStore.ts, and all relevant shadcn/ui component files
+    59→- Analyzed project structure and available UI components (Button, Avatar, DropdownMenu, Separator, Tooltip, Sheet)
+    60→- Created /home/z/my-project/src/components/layout/Header.tsx:
+    61→  - App title "Aceli LAT" with Zap icon from Lucide
+    62→  - Subtitle showing current view label from VIEW_LABELS
+    63→  - Sidebar toggle button (Menu icon) wired to toggleSidebar from useAppStore
+    64→  - Notification bell button with indicator dot
+    65→  - User avatar dropdown (Avatar + DropdownMenu) with mock user "Admin User" (admin@aceli.org)
+    66→  - Profile, Settings, and Log out menu items
+    67→  - Responsive: user name hidden on mobile, subtitle hidden on small screens
+    68→- Created /home/z/my-project/src/components/layout/Sidebar.tsx:
+    69→  - 7 navigation groups matching the spec: Platform (Sprint 3), Field Capture (4), Review & Governance (5), HQ & Analytics (6), Rollout (7-8), Operations (9), Outcomes (10)
+    70→  - Each group has: collapsible header with group icon, section label, sprint tag, chevron toggle
+    71→  - Each nav item has: unique Lucide icon, label from VIEW_LABELS, active state highlight (bg-primary/10 + text-primary)
+    72→  - Active group header gets subtle highlight styling
+    73→  - Desktop sidebar: 264px wide with smooth width transition, collapses to w-0
+    74→  - Mobile sidebar: overlay panel with backdrop, slides in from left, close button
+    75→  - useSyncExternalStore for client-only mobile sidebar rendering (avoids hydration issues)
+    76→  - Footer with version label "v0.1.0 · Mobilization"
+    77→  - Smooth CSS transitions on collapse/expand (maxHeight + opacity)
+    78→- Ran ESLint on both files: 0 errors, 0 warnings
+    79→- All pre-existing lint errors (154 total) are in other project files, not in layout components
+    80→
+    81→Stage Summary:
+    82→- Two layout component files created and lint-clean
+    83→- Header.tsx: full-featured top bar with sidebar toggle, view subtitle, notifications, user dropdown
+    84→- Sidebar.tsx: comprehensive navigation with 7 collapsible groups, 30 nav items, responsive desktop+mobile
+    85→- Both components use useAppStore for state, VIEW_LABELS for labels, shadcn/ui for UI primitives
+    86→- Ready for integration into the main page layout
+    87→
+    88→---
+    89→Task ID: api-sprint9-10
+    90→Agent: API Routes Agent
+    91→Task: Create ALL API routes for Sprint 9 and Sprint 10
+    92→
+    93→Work Log:
+    94→- Read worklog.md, prisma/schema.prisma, and src/lib/db.ts for project context and patterns
+    95→- Verified Prisma schema already contains all Sprint 9/10 models (WarrantyPeriod, IncidentResponse, BackupRecord, DRPlan, KnownIssue, MaintenanceItem, ServiceMaturity, OutcomeKPI, AdoptionMetric, ContinuousImprovementItem, Month12Review, ExecutiveReviewPack)
+    96→- Created 12 API route directories under src/app/api/
+    97→- Created 24 route files total (12 list routes + 12 detail routes)
+    98→
+    99→Sprint 9 Routes (14 files):
+   100→- /api/warranty — GET (country, status filter), POST
+   101→- /api/warranty/[id] — GET, PUT, DELETE
+   102→- /api/incidents — GET (severity, status, country filter), POST
+   103→- /api/incidents/[id] — GET, PUT, DELETE
+   104→- /api/backups — GET (type, status filter), POST
+   105→- /api/backups/[id] — GET, PUT, DELETE
+   106→- /api/dr-plans — GET (status filter), POST
+   107→- /api/dr-plans/[id] — GET, PUT, DELETE
+   108→- /api/known-issues — GET (severity, category, status filter), POST
+   109→- /api/known-issues/[id] — GET, PUT, DELETE
+   110→- /api/maintenance — GET (category, priority, status filter), POST
+   111→- /api/maintenance/[id] — GET, PUT, DELETE
+   112→- /api/maturity — GET (dimension filter), POST
+   113→- /api/maturity/[id] — GET, PUT, DELETE
+   114→
+   115→Sprint 10 Routes (10 files):
+   116→- /api/outcome-kpis — GET (category, period, status filter), POST
+   117→- /api/outcome-kpis/[id] — GET, PUT, DELETE
+   118→- /api/adoption-metrics — GET (metric, country, period filter), POST
+   119→- /api/adoption-metrics/[id] — GET, PUT, DELETE
+   120→- /api/continuous-improvement — GET (category, source, status filter), POST
+   121→- /api/continuous-improvement/[id] — GET, PUT, DELETE
+   122→- /api/month12-reviews — GET (section, status filter), POST
+   123→- /api/month12-reviews/[id] — GET, PUT, DELETE
+   124→- /api/executive-review — GET (section, audience, status filter), POST
+   125→- /api/executive-review/[id] — GET, PUT, DELETE
+   126→
+   127→- Ran prisma db:push — schema already in sync
+   128→- Ran ESLint on all 24 new route files — 0 errors, 0 warnings
+   129→- Wrote agent context to /agent-ctx/api-sprint9-10-api-routes-agent.md
+   130→
+   131→Stage Summary:
+   132→- All 24 API route files created for Sprint 9 and Sprint 10
+   133→- Consistent patterns: import { db } from '@/lib/db', NextResponse, await params for dynamic routes, try/catch with proper status codes
+   134→- All routes support filtered GET listing, POST creation, and full CRUD on individual records
+   135→- Lint-clean, Prisma schema in sync, ready for frontend integration
+   136→
+   137→---
+   138→Task ID: api-sprint3-4
+   139→Agent: API Routes Agent
+   140→Task: Create ALL API routes for Sprint 3 and Sprint 4
+   141→
+   142→Work Log:
+   143→- Read worklog.md, prisma/schema.prisma, and src/lib/db.ts for project context and patterns
+   144→- Verified Prisma schema already contains all Sprint 3/4 models (User, AuditLog, RolePermission, Lender, Meeting, NarrativeNote, VoiceMemo, ExtractionDraft, ActivationArea)
+   145→- Created 9 API route directories under src/app/api/
+   146→- Created 17 route files total (9 list routes + 8 detail routes)
+   147→
+   148→Sprint 3 Routes (5 files):
+   149→- /api/users — GET (list all), POST (create with email/name/role required)
+   150→- /api/users/[id] — GET (detail), PUT (update), DELETE (with 404 check)
+   151→- /api/audit-logs — GET (list with entity/userId/action filter), POST (create with userId/action/entity required)
+   152→- /api/role-permissions — GET (list), POST (create with role/permissions, unique constraint 409)
+   153→- /api/role-permissions/[id] — GET, PUT, DELETE (with 404 check)
+   154→
+   155→Sprint 4 Routes (12 files):
+   156→- /api/lenders — GET (list with country/status/institutionType filter), POST (create with name/institutionType/country required, lender validation)
+   157→- /api/lenders/[id] — GET (detail with recent meetings included), PUT, DELETE
+   158→- /api/meetings — GET (list with lenderId/status/country/type filter), POST (create with lenderId/title/date/country required, lender FK validation)
+   159→- /api/meetings/[id] — GET (detail with narratives/voiceMemos/extractions), PUT, DELETE
+   160→- /api/narrative-notes — GET (list with meetingId/area/source filter), POST (create with meetingId/content/area required, meeting FK validation)
+   161→- /api/narrative-notes/[id] — GET, PUT, DELETE
+   162→- /api/voice-memos — GET (list with meetingId/status filter), POST (create with meetingId required, meeting FK validation)
+   163→- /api/voice-memos/[id] — GET, PUT, DELETE
+   164→- /api/extraction-drafts — GET (list with meetingId/status/area filter), POST (create with meetingId/area/extractedText required, meeting+voiceMemo FK validation)
+   165→- /api/extraction-drafts/[id] — GET (detail with reviews included), PUT, DELETE
+   166→- /api/activation-areas — GET (list ordered by `order`), POST (create with name/description/category required)
+   167→- /api/activation-areas/[id] — GET, PUT, DELETE
+   168→
+   169→- Ran prisma db:push — schema already in sync
+   170→- Ran ESLint on all 17 new route files — 0 errors, 0 warnings
+   171→- Wrote agent context to /agent-ctx/api-sprint3-4-api-routes.md
+   172→
+   173→Stage Summary:
+   174→- All 17 API route files created for Sprint 3 and Sprint 4
+   175→- Consistent patterns: import { db } from '@/lib/db', NextResponse, await params for dynamic routes, try/catch with proper status codes
+   176→- Relational includes on detail endpoints (lender→meetings, meeting→narratives/voiceMemos/extractions, extraction-draft→reviews)
+   177→- Foreign key validation on POST (meeting validates lenderId, narrative-note validates meetingId, etc.)
+   178→- Unique constraint violations return 409 status (User email, RolePermission role, ActivationArea name, ExtractionDraft voiceMemoId)
+   179→- Lint-clean, Prisma schema in sync, ready for frontend integration
+   180→
+   181→---
+   182→Task ID: api-sprint7-8
+   183→Agent: API Routes Agent
+   184→Task: Create ALL API routes for Sprint 7 and Sprint 8
+   185→
+   186→Work Log:
+   187→- Read worklog.md, prisma/schema.prisma, and src/lib/db.ts for project context and patterns
+   188→- Verified Prisma schema already contains all Sprint 7/8 models (KPIMeasurement, PilotDefect, RolloutWave, CountryConfig, UserFeedback, CountryReadiness, AdminHandover, MonitoringAlert, SupportTicket)
+   189→- Created 9 API route directories under src/app/api/
+   190→- Created 18 route files total (9 list routes + 9 detail routes)
+   191→
+   192→Sprint 7 Routes — Pilot Stabilization & Rollout Wave 1 (10 files):
+   193→- /api/kpis — GET (kpiName, country, period filter), POST (create with lender relation)
+   194→- /api/kpis/[id] — GET (with lender include), PUT, DELETE
+   195→- /api/defects — GET (severity, category, status filter), POST
+   196→- /api/defects/[id] — GET, PUT, DELETE
+   197→- /api/rollout-waves — GET (wave, country, status filter, includes countryReadiness), POST
+   198→- /api/rollout-waves/[id] — GET, PUT, DELETE
+   199→- /api/country-configs — GET (list all), POST (unique constraint on country → 409)
+   200→- /api/country-configs/[id] — GET, PUT, DELETE
+   201→- /api/feedback — GET (category, status filter, includes user relation), POST
+   202→- /api/feedback/[id] — GET, PUT, DELETE
+   203→
+   204→Sprint 8 Routes — Rollout Wave 2 & Multi-Country (8 files):
+   205→- /api/country-readiness — GET (rolloutWaveId filter, includes rolloutWave relation), POST (validates wave exists, unique constraint → 409)
+   206→- /api/country-readiness/[id] — GET, PUT, DELETE
+   207→- /api/admin-handover — GET (section, status filter), POST
+   208→- /api/admin-handover/[id] — GET, PUT, DELETE
+   209→- /api/monitoring-alerts — GET (type, severity, status filter), POST
+   210→- /api/monitoring-alerts/[id] — GET, PUT (special acknowledge/resolve actions via body.action), DELETE
+   211→- /api/support-tickets — GET (category, priority, status filter, includes reporter relation), POST (validates reporter exists)
+   212→- /api/support-tickets/[id] — GET, PUT, DELETE
+   213→
+   214→Key Implementation Details:
+   215→- All routes use `import { db } from '@/lib/db'` and `import { NextResponse } from 'next/server'`
+   216→- Dynamic route params use Promise pattern: `{ params }: { params: Promise<{ id: string }> }` with `const { id } = await params`
+   217→- All DB calls wrapped in try/catch with proper HTTP status codes (400, 404, 409, 500)
+   218→- Monitoring alerts PUT supports special `action: acknowledge` and `action: resolve` with auto-timestamp
+   219→- Support tickets POST validates reporter existence before creation
+   220→- Country readiness POST validates rollout wave existence before creation
+   221→- Country configs handle unique constraint violations with 409 Conflict
+   222→- Relations included in responses where applicable (lender on KPIs, user on feedback, reporter on tickets, rolloutWave on readiness)
+   223→- Ran ESLint on all 18 new route files — 0 errors in API route files
+   224→- Wrote agent context to /agent-ctx/api-sprint7-8-api-routes-agent.md
+   225→
+   226→Stage Summary:
+   227→- All 18 API route files created for Sprint 7 and Sprint 8
+   228→- Consistent patterns: db import, NextResponse, await params, try/catch with status codes
+   229→- All routes support filtered GET listing, POST creation with validation, and full CRUD on individual records
+   230→- Monitoring alerts have dedicated acknowledge/resolve workflow
+   231→- Lint-clean, Prisma schema in sync, ready for frontend integration
+   232→
+   233→---
+   234→Task ID: api-sprint3-4
+   235→Agent: API Routes Agent
+   236→Task: Create ALL API routes for Sprint 3 and Sprint 4
+   237→
+   238→Work Log:
+   239→- Read worklog.md, prisma/schema.prisma, and src/lib/db.ts for project context and patterns
+   240→- Verified Prisma schema already contains all Sprint 3/4 models (User, AuditLog, RolePermission, Lender, Meeting, NarrativeNote, VoiceMemo, ExtractionDraft, ActivationArea)
+   241→- Created 9 API route directories under src/app/api/
+   242→- Created 17 route files total (9 list routes + 8 detail routes)
+   243→
+   244→Sprint 3 Routes (5 files):
+   245→- /api/users — GET (list all), POST (create with email/name/role required)
+   246→- /api/users/[id] — GET (detail), PUT (update), DELETE (with 404 check)
+   247→- /api/audit-logs — GET (list with entity/userId/action filter), POST (create with userId/action/entity required)
+   248→- /api/role-permissions — GET (list), POST (create with role/permissions, unique constraint 409)
+   249→- /api/role-permissions/[id] — GET, PUT, DELETE (with 404 check)
+   250→
+   251→Sprint 4 Routes (12 files):
+   252→- /api/lenders — GET (list with country/status/institutionType filter), POST (create with name/institutionType/country required, lender validation)
+   253→- /api/lenders/[id] — GET (detail with recent meetings included), PUT, DELETE
+   254→- /api/meetings — GET (list with lenderId/status/country/type filter), POST (create with lenderId/title/date/country required, lender FK validation)
+   255→- /api/meetings/[id] — GET (detail with narratives/voiceMemos/extractions), PUT, DELETE
+   256→- /api/narrative-notes — GET (list with meetingId/area/source filter), POST (create with meetingId/content/area required, meeting FK validation)
+   257→- /api/narrative-notes/[id] — GET, PUT, DELETE
+   258→- /api/voice-memos — GET (list with meetingId/status filter), POST (create with meetingId required, meeting FK validation)
+   259→- /api/voice-memos/[id] — GET, PUT, DELETE
+   260→- /api/extraction-drafts — GET (list with meetingId/status/area filter), POST (create with meetingId/area/extractedText required, meeting+voiceMemo FK validation)
+   261→- /api/extraction-drafts/[id] — GET (detail with reviews included), PUT, DELETE
+   262→- /api/activation-areas — GET (list ordered by `order`), POST (create with name/description/category required)
+   263→- /api/activation-areas/[id] — GET, PUT, DELETE
+   264→
+   265→- Ran prisma db:push — schema already in sync
+   266→- Ran ESLint on all 17 new route files — 0 errors, 0 warnings
+   267→- Wrote agent context to /agent-ctx/api-sprint3-4-api-routes.md
+   268→
+   269→Stage Summary:
+   270→- All 17 API route files created for Sprint 3 and Sprint 4
+   271→- Consistent patterns: import { db } from '@/lib/db', NextResponse, await params for dynamic routes, try/catch with proper status codes
+   272→- Relational includes on detail endpoints (lender→meetings, meeting→narratives/voiceMemos/extractions, extraction-draft→reviews)
+   273→- Foreign key validation on POST (meeting validates lenderId, narrative-note validates meetingId, etc.)
+   274→- Unique constraint violations return 409 status (User email, RolePermission role, ActivationArea name, ExtractionDraft voiceMemoId)
+   275→- Lint-clean, Prisma schema in sync, ready for frontend integration
+   276→
+   277→---
+   278→Task ID: api-sprint5-6
+   279→Agent: API Routes Agent
+   280→Task: Create ALL API routes for Sprint 5 and Sprint 6
+   281→
+   282→Work Log:
+   283→- Read worklog.md, prisma/schema.prisma, and src/lib/db.ts for project context and patterns
+   284→- Fixed pre-existing bug in src/lib/db.ts: `PrismaBetterSQLite3` → `PrismaBetterSqlite3` (correct export name from @prisma/adapter-better-sqlite3)
+   285→- Rebuilt better-sqlite3 native bindings (npm rebuild better-sqlite3)
+   286→- Verified Prisma schema already contains all Sprint 5/6 models (ReviewDecision, ExceptionQueue, SyncRecord, ValidationRule, Scorecard, BenchmarkingFeed, MigrationRecord)
+   287→- Created 7 API route directories under src/app/api/
+   288→- Created 14 route files total (7 list routes + 7 detail routes)
+   289→
+   290→Sprint 5 Routes — Review & Governance (8 files):
+   291→- /api/review-decisions — GET (extractionId/reviewerId filter, includes extraction+reviewer), POST (with decision enum validation)
+   292→- /api/review-decisions/[id] — GET (includes extraction+reviewer), PUT, DELETE
+   293→- /api/exceptions — GET (type/severity/status filter), POST (with type/severity/status enum validation)
+   294→- /api/exceptions/[id] — GET, PUT (auto-set resolvedAt on resolve/dismiss), DELETE
+   295→- /api/sync-records — GET (entity/status filter), POST (with direction/status enum validation)
+   296→- /api/sync-records/[id] — GET, PUT, DELETE
+   297→- /api/validation-rules — GET (entity/active filter), POST (with rule enum validation)
+   298→- /api/validation-rules/[id] — GET, PUT, DELETE
+   299→
+   300→Sprint 6 Routes — HQ & Analytics (6 files):
+   301→- /api/scorecards — GET (lenderId/period filter, includes lender), POST (with score fields)
+   302→- /api/scorecards/[id] — GET (includes lender), PUT, DELETE
+   303→- /api/benchmarking — GET (country/period/status filter), POST (with status enum validation)
+   304→- /api/benchmarking/[id] — GET, PUT (validate/publish with auto-set validatedBy+validatedAt), DELETE
+   305→- /api/migration-records — GET (sourceType/status filter), POST (with sourceType enum validation)
+   306→- /api/migration-records/[id] — GET, PUT (auto-set migratedAt on status=migrated), DELETE
+   307→
+   308→Key Implementation Details:
+   309→- All routes use `import { db } from '@/lib/db'` and `import { NextResponse } from 'next/server'`
+   310→- Dynamic route params use Promise pattern: `{ params }: { params: Promise<{ id: string }> }` with `const { id } = await params`
+   311→- All DB calls wrapped in try/catch with proper HTTP status codes (400, 404, 500)
+   312→- Enum validation on all status/type fields with explicit allowed values and descriptive error messages
+   313→- Auto-timestamp logic: resolvedAt on exception resolve/dismiss, validatedAt on benchmarking validate/publish, migratedAt on migration complete
+   314→- Relations included in responses: reviewer+extraction on ReviewDecision, lender on Scorecard
+   315→- Ran ESLint on all 14 new route files — 0 errors
+   316→- Wrote agent context to /agent-ctx/api-sprint5-6-api-routes-agent.md
+   317→
+   318→Stage Summary:
+   319→- All 14 API route files created for Sprint 5 and Sprint 6
+   320→- Fixed pre-existing db.ts import bug (PrismaBetterSQLite3 → PrismaBetterSqlite3)
+   321→- Consistent patterns: db import, NextResponse, await params, try/catch with status codes
+   322→- Auto-timestamp workflows for exception resolution, benchmarking validation, and migration completion
+   323→- Lint-clean, Prisma schema in sync, ready for frontend integration
+   324→
+   325→---
+   326→Task ID: ui-sprint9-10
+   327→Agent: UI Components Agent
+   328→Task: Create ALL UI component files for Sprint 9 and Sprint 10 views
+   329→
+   330→Work Log:
+   331→- Read worklog.md, prisma/schema.prisma, existing shadcn/ui component files, and project patterns
+   332→- Verified all UI components available: Card, Badge, Table, Dialog, Select, Progress, Tabs, Input, Label, Textarea, Button, Checkbox, Switch, Sheet, Tooltip, Separator, Avatar, DropdownMenu, Sonner
+   333→- Created 12 component directories under src/components/
+   334→- Created 12 component files total
+   335→
+   336→Sprint 9 Components (7 files):
+   337→- /src/components/warranty/WarrantyTracker.tsx — Warranty period cards per country with start/end dates, SLA target, issues count, status badges (active/expiring/expired/extended), satisfaction score display, progress bar for warranty timeline. Fetch from /api/warranty with status/country filters.
+   338→- /src/components/incidents/IncidentManager.tsx — Incident table with severity badges, status badges, assignee, timeline event count. Filters: severity, status, country. Create incident dialog with title, description, severity, country, reporter fields. Fetch from /api/incidents.
+   339→- /src/components/backups/BackupManager.tsx — Backup records table with type, scope, size (formatted B/KB/MB/GB), status badges with icons (scheduled/in_progress/completed/failed/verified). Schedule backup dialog. Fetch from /api/backups.
+   340→- /src/components/dr/DRPlanView.tsx — DR plan cards with RTO/RPO target display, strategy label, status badge (draft/approved/tested/active), last test / next test dates, recovery steps with numbered indicators. Fetch from /api/dr-plans.
+   341→- /src/components/known-issues/KnownIssuesView.tsx — Known issues table with severity, category, status badges, workaround display, affected countries as inline badges, fix version. Filters: severity, category, status. Fetch from /api/known-issues.
+   342→- /src/components/maintenance/MaintenanceRoadmap.tsx — Maintenance items organized by category (feature/enhancement/tech_debt/security/compliance/performance), priority badges, effort labels, status tracking. Create item dialog. Fetch from /api/maintenance.
+   343→- /src/components/maturity/MaturityAssessment.tsx — Maturity grid across 6 dimensions (reliability/performance/security/observability/support/documentation), current level vs target level progress bars, gap indicator, evidence display, recommendations section, summary cards. Fetch from /api/maturity.
+   344→
+   345→Sprint 10 Components (5 files):
+   346→- /src/components/outcomes/OutcomeKPIView.tsx — KPI cards with baseline vs actual vs target, category grouping (activation/adoption/efficiency/quality/impact), status badges (achieved=green, missed=red, tracking=amber, defined=slate), progress bars, trend icons. Fetch from /api/outcome-kpis.
+   347→- /src/components/adoption/AdoptionMetricsView.tsx — Metric cards per country grouping, value vs target with progress bar, previous period comparison with trend percentage, metric type labels and icons. Fetch from /api/adoption-metrics.
+   348→- /src/components/improvement/ContinuousImprovementView.tsx — Improvement items table with category, source, priority, status, owner, outcomes. Filters: category, source, status. Create item dialog with priority/impact/effort. Fetch from /api/continuous-improvement.
+   349→- /src/components/review/Month12ReviewView.tsx — Review sections with content editing via tabs (7 sections: executive_summary, kpi_outcomes, adoption_analysis, impact_stories, lessons_learned, recommendations, next_steps), status tracking (draft/reviewed/approved/published) with status change dropdown, save button per section. Fetch from /api/month12-reviews.
+   350→- /src/components/executive/ExecutiveReviewView.tsx — Executive review pack cards grouped by section, audience badges (board/executive/program_team/donors), content preview, data sources display, status badges, author. Filters: section, audience, status. Fetch from /api/executive-review.
+   351→
+   352→Lint Fixes Applied:
+   353→- Removed unused imports: Button (WarrantyTracker), Filter (IncidentManager, KnownIssuesView), CardHeader/CardTitle (BackupManager, IncidentManager), ProgressLabel/ProgressValue (MaturityAssessment), Clock (Month12ReviewView)
+   354→- Fixed "Calling setState synchronously within an effect" by removing setLoading(true) from useEffect bodies (initial state already true)
+   355→- Fixed "Cannot call impure function during render" for Date.now() in WarrantyTracker by moving date calculations into the useEffect data processing step (enrichWarranty function)
+   356→
+   357→All 12 component files are lint-clean (0 errors, 0 warnings).
+   358→
+   359→Stage Summary:
+   360→- All 12 UI component files created for Sprint 9 (7) and Sprint 10 (5)
+   361→- Consistent patterns: 'use client', shadcn/ui imports from @/components/ui/, Lucide icons, Select onValueChange with null handling, fetch from /api/xxx in useEffect, useState for data/loading/filters
+   362→- All components are responsive with mobile-first design
+   363→- All tables have max-h-[600px] overflow-y-auto for long lists
+   364→- All dialogs use DialogTrigger render pattern for custom trigger elements
+   365→- Lint-clean, ready for integration into the main page layout
+   366→
+   367→---
+   368→Task ID: ui-sprint3-4
+   369→Agent: UI Components Agent
+   370→Task: Create 8 UI component files for Sprint 3 and Sprint 4 views
+   371→
+   372→Work Log:
+   373→- Read worklog.md, prisma/schema.prisma, useAppStore.ts, types.ts, and all API route files for context
+   374→- Analyzed existing shadcn/ui component library (18 components: card, badge, select, tabs, dialog, input, textarea, label, table, button, progress, separator, avatar, switch, checkbox, dropdown-menu, sheet, tooltip)
+   375→- Analyzed existing Header.tsx and Sidebar.tsx layout components for pattern consistency
+   376→- Created 8 component files across 6 directories:
+   377→
+   378→Sprint 3 Components (2 files):
+   379→- /src/components/dashboard/DashboardView.tsx — Summary cards (Total Lenders, Active Meetings, Pending Reviews, Sync Status), recent activity list, quick action buttons. Fetches from /api/lenders, /api/meetings, /api/extraction-drafts, /api/sync-records
+   380→- /src/components/audit/AuditLogView.tsx — Table of audit logs with Timestamp/User/Action/Entity/Details columns, entity and action filter selects, auto-refresh toggle. Fetches from /api/audit-logs
+   381→
+   382→Sprint 4 Components (6 files):
+   383→- /src/components/lenders/LenderList.tsx — Card grid with search, country/status filters, expandable cards showing name/type/country/activation score/status. Fetches from /api/lenders
+   384→- /src/components/lenders/LenderDetail.tsx — Tabbed detail view (Profile, Meetings, Scorecard, Sync Status) with contact info, activation score, dimension score progress bars, sync history. Fetches from /api/lenders/[id], /api/scorecards, /api/sync-records
+   385→- /src/components/meetings/MeetingList.tsx — Table with status/type/country filters, dialog form to create new meeting (lender select, title, date, type, country, location). Fetches from /api/meetings, /api/lenders
+   386→- /src/components/meetings/MeetingDetail.tsx — Detail view with narrative notes list, voice memos, extraction draft cards with confidence scores and flags, add note form. Fetches from /api/meetings/[id], POSTs to /api/narrative-notes
+   387→- /src/components/extractions/ExtractionList.tsx — Table of extraction drafts with summary cards, status/area filters, confidence progress bars, flag badges. Fetches from /api/extraction-drafts
+   388→- /src/components/activation/ActivationAreaView.tsx — Grid of 6 color-coded activation areas with weight distribution bar, progress bars, detailed list. Fetches from /api/activation-areas
+   389→
+   390→- Fixed lint issues: removed unused imports (Handshake, ExternalLink, Separator), refactored useEffect patterns to avoid react-hooks/set-state-in-effect rule (replaced synchronous setState in effects with cancelled-flag pattern and inline fetch logic)
+   391→- All 8 new component files pass ESLint with 0 errors, 0 warnings
+   392→- Wrote agent context to /agent-ctx/ui-sprint3-4-ui-components.md
+   393→
+   394→Stage Summary:
+   395→- 8 component files created and lint-clean across 6 directories
+   396→- Consistent patterns: 'use client', shadcn/ui imports, Lucide icons, useEffect with cancelled flags, useState for data/loading/filters, useAppStore for navigation
+   397→- Select onValueChange handles string | null with (v) => setFilter(v ?? 'all')
+   398→- Responsive design with Tailwind CSS grid and breakpoints
+   399→- Ready for integration into main page.tsx
+   400→
+   401→---
+   402→Task ID: ui-sprint5-6
+   403→Agent: UI Components Agent
+   404→Task: Create Sprint 5 and Sprint 6 UI component files
+   405→
+   406→Work Log:
+   407→- Read worklog.md, types.ts, useAppStore.ts, prisma/schema.prisma, and all shadcn/ui component files
+   408→- Analyzed project structure: existing layout components (Header, Sidebar), API routes for Sprint 5/6 (review-decisions, exceptions, sync-records, scorecards, benchmarking, migration-records, validation-rules, extraction-drafts)
+   409→- Created 7 component files across 7 directories:
+   410→
+   411→Sprint 5 Components (3 files):
+   412→- /src/components/review/ReviewWorkbench.tsx — List of extraction drafts pending review (status=pending_review). Shows extracted text, area, confidence, flags for each draft. Action buttons: Approve, Reject, Request Follow-up, Edit. Dialog for review with rationale textarea, edited text support for edit mode. Fetches from /api/extraction-drafts?status=pending_review, POSTs to /api/review-decisions
+   413→- /src/components/exceptions/ExceptionQueue.tsx — Table of exceptions with severity badges (critical/high destructive, medium outline, low secondary), type, entity, message columns. Filters: type (6 options), severity (4 options), status (4 options) via Select components. Actions: Resolve, Dismiss with notes dialog. Fetches from /api/exceptions
+   414→- /src/components/sync/SyncDashboard.tsx — Sync records table with direction badges (LAT→SF, SF→LAT), status icons (pending=Clock, completed=CheckCircle2, failed=XCircle, conflict=AlertTriangle). Summary cards: Pending (amber), Completed (emerald), Failed (red). Retry button for failed/conflict records. Fetches from /api/sync-records
+   415→
+   416→Sprint 6 Components (4 files):
+   417→- /src/components/hq/HQDashboard.tsx — Executive summary cards: Total Lenders by Country, Avg Activation Score, Pending Reviews, Sync Health (color-coded by threshold). Country breakdown table with lender counts and score bars. Recent activity timeline (sync events + scorecard updates). Fetches from /api/lenders, /api/scorecards, /api/sync-records
+   418→- /src/components/scorecards/ScorecardView.tsx — Scorecard list with lender name, period, overall score. Expandable detail view with 6 dimension progress bars (lendingVolume=emerald, termsAlignment=teal, productFit=cyan, pipelineStrength=sky, constraintResolution=indigo, relationshipHealth=violet). Score badges: Strong (≥80), Moderate (≥60), Needs Attention (<60). Fetches from /api/scorecards
+   419→- /src/components/benchmarking/BenchmarkingView.tsx — Benchmarking data table with country, period, metric, value, status columns. Filters: country (derived from data), status (5 options). Validate/Publish action buttons with loading states. Fetches from /api/benchmarking, PUTs to /api/benchmarking/[id]
+   420→- /src/components/migration/MigrationView.tsx — Migration records table with source→target badges (Google Sheets, Salesforce, Manual). Status badges with color dots (mapped=sky, validated=emerald, migrated=teal, failed=red, skipped=gray). Progress summary bar with percentage. 4 summary pill cards. Validation notes section. Fetches from /api/migration-records
+   421→
+   422→- Fixed lint issues: refactored useEffect patterns to avoid react-hooks/set-state-in-effect rule (used inline async functions with cancelled flags instead of useCallback + useEffect patterns that triggered synchronous setState warnings)
+   423→- Select onValueChange handles string | null with (v) => setFilter(v ?? 'all')
+   424→- All 7 new component files pass ESLint with 0 errors, 0 warnings
+   425→- Wrote agent context to /agent-ctx/ui-sprint5-6-ui-components.md
+   426→
+   427→Stage Summary:
+   428→- 7 component files created and lint-clean across 7 directories
+   429→- Consistent patterns: 'use client', shadcn/ui imports (Card, Badge, Button, Table, Select, Dialog, Textarea, Progress), Lucide React icons
+   430→- useEffect with cancelled-flag pattern for safe async data fetching
+   431→- Responsive design with Tailwind CSS grid and sm:/lg: breakpoints
+   432→- Proper loading states (Loader2 spinner), empty states, and error handling
+   433→- All data flows match existing API routes (Sprint 5/6 endpoints)
+   434→- Ready for integration into main page.tsx
+   435→
+   436→---
+   437→Task ID: ui-sprint7-8
+   438→Agent: UI Components Agent
+   439→Task: Create ALL UI component files for Sprint 7 and Sprint 8 views
+   440→
+   441→Work Log:
+   442→- Read worklog.md, types.ts, useAppStore.ts, prisma/schema.prisma, and all shadcn/ui component files
+   443→- Analyzed existing project patterns from DashboardView.tsx (fetch/.then() chain in useEffect, no setLoading in effect body)
+   444→- Created 8 component directories under src/components/
+   445→- Created 8 component files total
+   446→
+   447→Sprint 7 Components (4 files):
+   448→- /src/components/kpi/KPIDashboard.tsx — KPI cards with baseline vs actual vs target comparison, progress bars showing % to target with color coding (green≥100%, yellow≥70%, red<70%), status badges (On Target, Near Target, Below Target, No Data). Summary cards: Total KPIs, On Target count, Avg Progress. Filters: kpiName, country, period via Select components with "all" default. Fetch from /api/kpis.
+   449→- /src/components/defects/DefectTracker.tsx — Defect table with severity badges (blocker/critical/high=destructive, medium=secondary, low=outline), category badges, status badges, assignee, country columns. Summary cards per severity level. Create defect dialog with title, description, severity, category, assignee, country fields. Filters: severity, category, status. Fetch from /api/defects.
+   450→- /src/components/rollout/RolloutWaveView.tsx — Wave cards grouped by Wave 1 (Pilot) and Wave 2 (Multi-Country) with country, status, dates. Country readiness checklist per wave with green check / red X for Data Migration, Roles Configured, Users Trained, Integration Verified. Progress bar per country. Sign-off date and notes display. Fetch from /api/rollout-waves.
+   451→- /src/components/feedback/FeedbackView.tsx — Feedback list with category badges (bug=destructive, feature=default, ux=secondary, workflow/other=outline), priority badges, status badges. Create feedback dialog with title, description, category, priority, country fields. Filters: category, status. Fetch from /api/feedback.
+   452→
+   453→Sprint 8 Components (4 files):
+   454→- /src/components/country/CountryReadinessView.tsx — Readiness matrix: countries vs checklist items (Data Migration, Roles Configured, Users Trained, Integration Verified) with green CheckCircle2 / red XCircle icons. Desktop table view, mobile card view. Progress bars per country. Sign-off tracking with date badges or "Pending". Summary cards: Total Countries, Fully Ready, Signed Off. Fetch from /api/country-readiness.
+   455→- /src/components/handover/AdminHandoverView.tsx — Handover checklist with 6 sections (System Access/Shield, Data Management/Database, Integrations/Link2, Monitoring/Activity, Support/Headphones, Training/GraduationCap). Status badges (pending=outline, in_progress=secondary, completed=default, verified=default). Progress bar per section with percentage. Overall completion progress bar. Fetch from /api/admin-handover.
+   456→- /src/components/monitoring/MonitoringView.tsx — Alert cards with severity config (critical=red destructive, warning=yellow secondary, info=blue outline), type display, message, entity/country/timestamp. Filters: type (5 options), severity (3 options), status (3 options). Acknowledge/Resolve action buttons with loading states. Summary cards: Active Alerts, Critical Unresolved, Resolved. Resolved alerts shown with opacity-60. Fetch from /api/monitoring-alerts, PUT to /api/monitoring-alerts/[id] with action body.
+   457→- /src/components/support/SupportTicketView.tsx — Ticket table with priority badges (critical/high=destructive, medium=secondary, low=outline), category badges, status badges, reporter name. Summary cards: Total, Open, In Progress, Resolved. Create ticket dialog with title, description, category, priority, country fields. Filters: category (6 options), priority (4 options), status (5 options). Fetch from /api/support-tickets.
+   458→
+   459→Lint Fixes Applied:
+   460→- Removed unused imports: Checkbox (RolloutWaveView), X (MonitoringView), TYPE_VARIANTS (MonitoringView)
+   461→- Fixed "Cannot access variable before it is declared" by replacing useCallback+useEffect pattern with inline fetch/.then() chain in useEffect (matching DashboardView.tsx pattern)
+   462→- Fixed "Calling setState synchronously within an effect" by removing setLoading(true) from useEffect bodies (initial state already true, only setLoading(false) in .finally())
+   463→- Fixed @typescript-eslint/no-non-null-asserted-optional-chain in AdminHandoverView by using `as string` cast instead of `!` operator
+   464→- Prefixed unused _waveNum parameter in RolloutWaveView renderWaveGroup
+   465→
+   466→All 8 component files are lint-clean (0 errors, 0 warnings).
+   467→
+   468→Stage Summary:
+   469→- All 8 UI component files created for Sprint 7 (4) and Sprint 8 (4)
+   470→- Consistent patterns: 'use client', shadcn/ui imports from @/components/ui/, Lucide icons, Select onValueChange with (v) => setFilter(v ?? 'all'), fetch from /api/xxx in useEffect with .then() chain, useState for data/loading/filters
+   471→- All components are responsive with mobile-first design (grid breakpoints, mobile card views)
+   472→- Tables use max-h-96 overflow-y-auto for long lists
+   473→- Dialogs use DialogTrigger render pattern for custom trigger elements
+   474→- MonitoringView has acknowledge/resolve workflow via PUT /api/monitoring-alerts/[id]
+   475→- Lint-clean, ready for integration into the main page layout
+   476→

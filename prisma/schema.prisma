@@ -1,0 +1,577 @@
+// Aceli LAT - Full Production Schema (Sprint 0-10)
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ============================================================
+// Sprint 3: Platform Foundation
+// ============================================================
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  role      String   // country_director, country_manager, hq_analyst, hq_executive, admin, product_owner
+  country   String?
+  avatar    String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reviews       ReviewDecision[]
+  auditLogs     AuditLog[]
+  feedback      UserFeedback[]
+  supportTickets SupportTicket[]
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String   // create, update, approve, reject, sync, delete
+  entity    String   // lender, meeting, extraction, review, etc.
+  entityId  String?
+  details   String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+}
+
+model RolePermission {
+  id          String @id @default(cuid())
+  role        String @unique
+  permissions String // JSON array of permission strings
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ============================================================
+// Sprint 4: Field Capture, Transcription, Draft Extraction
+// ============================================================
+
+model Lender {
+  id              String   @id @default(cuid())
+  name            String
+  institutionType String   // bank, microfinance, dfi, cooperative, nbfi
+  country         String
+  region          String?
+  contactPerson   String?
+  contactEmail    String?
+  contactPhone    String?
+  portfolioSize   Float?
+  activationScore Float    @default(0)
+  status          String   @default("active") // active, dormant, exited
+  source          String   @default("lat") // lat, salesforce, migration
+  salesforceId    String?  @unique
+  lastSyncAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  meetings       Meeting[]
+  scorecards     Scorecard[]
+  kpiMeasurements KPIMeasurement[]
+}
+
+model Meeting {
+  id          String   @id @default(cuid())
+  lenderId    String
+  lender      Lender   @relation(fields: [lenderId], references: [id])
+  userId      String?
+  title       String
+  date        DateTime
+  location    String?
+  type        String   @default("field_visit") // field_visit, call, hq_meeting, conference
+  country     String
+  status      String   @default("planned") // planned, in_progress, completed, cancelled
+  syncStatus  String   @default("synced") // synced, pending, failed, conflict
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  narratives     NarrativeNote[]
+  voiceMemos     VoiceMemo[]
+  extractions    ExtractionDraft[]
+}
+
+model NarrativeNote {
+  id        String   @id @default(cuid())
+  meetingId String
+  meeting   Meeting  @relation(fields: [meetingId], references: [id])
+  content   String
+  area      String   // lending_volume, terms, products, pipeline, constraints, relationship
+  source    String   @default("typed") // typed, voice_extracted, ai_generated
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model VoiceMemo {
+  id          String   @id @default(cuid())
+  meetingId   String
+  meeting     Meeting  @relation(fields: [meetingId], references: [id])
+  duration    Int?     // seconds
+  language    String?
+  transcript  String?
+  status      String   @default("recorded") // recorded, transcribing, transcribed, failed
+  storageUrl  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  extractionDraft ExtractionDraft?
+}
+
+model ExtractionDraft {
+  id            String   @id @default(cuid())
+  meetingId     String
+  meeting       Meeting  @relation(fields: [meetingId], references: [id])
+  voiceMemoId   String?  @unique
+  voiceMemo     VoiceMemo? @relation(fields: [voiceMemoId], references: [id])
+  area          String
+  extractedText String
+  confidence    Float    @default(0)
+  flags         String?  // JSON array of flags
+  status        String   @default("draft") // draft, pending_review, approved, rejected, needs_followup
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  reviews ReviewDecision[]
+}
+
+model ActivationArea {
+  id          String @id @default(cuid())
+  name        String @unique
+  description String
+  category    String // lending, terms, products, pipeline, constraints, relationship
+  weight      Float  @default(1.0)
+  order       Int    @default(0)
+}
+
+// ============================================================
+// Sprint 5: Review Workbench, Exceptions, Approvals
+// ============================================================
+
+model ReviewDecision {
+  id              String   @id @default(cuid())
+  extractionId    String
+  extraction      ExtractionDraft @relation(fields: [extractionId], references: [id])
+  reviewerId      String
+  reviewer        User     @relation(fields: [reviewerId], references: [id])
+  decision        String   // approved, rejected, needs_followup, edited
+  originalText    String?
+  editedText      String?
+  rationale       String?
+  reviewedAt      DateTime @default(now())
+}
+
+model ExceptionQueue {
+  id          String   @id @default(cuid())
+  entity      String   // extraction, sync, lender
+  entityId    String
+  type        String   // missing_field, low_confidence, conflict, invalid_transition, sync_failed, reviewer_rejection
+  severity    String   @default("medium") // low, medium, high, critical
+  message     String
+  status      String   @default("open") // open, in_progress, resolved, dismissed
+  resolvedBy  String?
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SyncRecord {
+  id            String   @id @default(cuid())
+  entity        String   // lender, extraction, review
+  entityId      String
+  direction     String   // lat_to_sf, sf_to_lat
+  status        String   @default("pending") // pending, in_progress, completed, failed, conflict
+  salesforceId  String?
+  payload       String?  // JSON
+  errorMessage  String?
+  retryCount    Int      @default(0)
+  lastAttemptAt DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model ValidationRule {
+  id          String   @id @default(cuid())
+  entity      String
+  field       String
+  rule        String   // required, range, format, unique, custom
+  parameters  String?  // JSON
+  message     String
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ============================================================
+// Sprint 6: HQ Views, Scorecard, Benchmarking, Pilot
+// ============================================================
+
+model Scorecard {
+  id                  String   @id @default(cuid())
+  lenderId            String
+  lender              Lender   @relation(fields: [lenderId], references: [id])
+  period              String   // "2026-Q1", "2026-06"
+  lendingVolume       Float    @default(0)
+  termsAlignment      Float    @default(0)
+  productFit          Float    @default(0)
+  pipelineStrength    Float    @default(0)
+  constraintResolution Float   @default(0)
+  relationshipHealth  Float    @default(0)
+  overallScore        Float    @default(0)
+  reviewedAt          DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model BenchmarkingFeed {
+  id          String   @id @default(cuid())
+  country     String
+  period      String
+  metric      String
+  value       Float
+  source      String   @default("lat")
+  feedDate    DateTime @default(now())
+  status      String   @default("pending") // pending, validated, published, rejected
+  validatedBy String?
+  validatedAt DateTime?
+  createdAt   DateTime @default(now())
+}
+
+model MigrationRecord {
+  id              String   @id @default(cuid())
+  sourceType      String   // google_sheets, salesforce, manual
+  sourceId        String?
+  targetType      String
+  targetId        String?
+  entity          String
+  status          String   @default("mapped") // mapped, validated, migrated, failed, skipped
+  sourceData      String?  // JSON
+  validationNotes String?
+  migratedBy      String?
+  migratedAt      DateTime?
+  createdAt       DateTime @default(now())
+}
+
+// ============================================================
+// Sprint 7: Pilot Stabilization, KPI, Rollout Wave 1
+// ============================================================
+
+model KPIMeasurement {
+  id          String   @id @default(cuid())
+  kpiName     String
+  lenderId    String?
+  lender      Lender?  @relation(fields: [lenderId], references: [id])
+  country     String
+  period      String
+  baseline    Float?
+  actual      Float?
+  target      Float?
+  unit        String   // percent, hours, count, score
+  source      String   @default("system")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PilotDefect {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  severity    String   @default("medium") // low, medium, high, critical, blocker
+  category    String   // functional, performance, ux, data, integration, security
+  status      String   @default("open") // open, in_progress, resolved, verified, closed, wontfix
+  assignee    String?
+  country     String?
+  resolution  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model RolloutWave {
+  id          String   @id @default(cuid())
+  wave        Int      // 1, 2
+  country     String
+  status      String   @default("planned") // planned, in_progress, completed, on_hold
+  startDate   DateTime?
+  endDate     DateTime?
+  config      String?  // JSON
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  countryReadiness CountryReadiness?
+}
+
+model CountryConfig {
+  id          String   @id @default(cuid())
+  country     String   @unique
+  config      String   // JSON: roles, languages, regions, lenders
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model UserFeedback {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  category    String   // bug, feature, ux, workflow, other
+  title       String
+  description String
+  priority    String   @default("medium") // low, medium, high
+  status      String   @default("submitted") // submitted, reviewed, planned, implemented, dismissed
+  country     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ============================================================
+// Sprint 8: Rollout Wave 2, Multi-Country, Admin Handover
+// ============================================================
+
+model CountryReadiness {
+  id                    String   @id @default(cuid())
+  rolloutWaveId         String   @unique
+  rolloutWave           RolloutWave @relation(fields: [rolloutWaveId], references: [id])
+  dataMigrationComplete Boolean  @default(false)
+  rolesConfigured       Boolean  @default(false)
+  usersTrained          Boolean  @default(false)
+  integrationVerified   Boolean  @default(false)
+  signOffDate           DateTime?
+  notes                 String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model AdminHandover {
+  id                String   @id @default(cuid())
+  section           String   // system_access, data_management, integrations, monitoring, support, training
+  status            String   @default("pending") // pending, in_progress, completed, verified
+  assignee          String?
+  completionDate    DateTime?
+  verificationDate  DateTime?
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model MonitoringAlert {
+  id          String   @id @default(cuid())
+  type        String   // sync_failure, performance, security, availability, data_quality
+  severity    String   @default("warning") // info, warning, critical
+  message     String
+  entity      String?
+  entityId    String?
+  country     String?
+  status      String   @default("active") // active, acknowledged, resolved
+  resolvedBy  String?
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SupportTicket {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  category    String   // technical, access, data, integration, training, other
+  priority    String   @default("medium") // low, medium, high, critical
+  status      String   @default("open") // open, assigned, in_progress, resolved, closed
+  reporterId  String
+  reporter    User     @relation(fields: [reporterId], references: [id])
+  assigneeId  String?
+  country     String?
+  resolution  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ============================================================
+// Sprint 9: Warranty, Stabilization, Handover, Service Maturity
+// ============================================================
+
+model WarrantyPeriod {
+  id              String   @id @default(cuid())
+  country         String
+  startDate       DateTime
+  endDate         DateTime
+  status          String   @default("active") // active, expiring, expired, extended
+  slaTargetHours  Int      @default(24)
+  issuesResolved  Int      @default(0)
+  issuesOpen      Int      @default(0)
+  satisfactionScore Float? 
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model IncidentResponse {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  severity    String   @default("medium") // low, medium, high, critical
+  country     String?
+  status      String   @default("reported") // reported, investigating, mitigated, resolved, closed
+  reporter    String?
+  assignee    String?
+  timeline    String?  // JSON: array of {timestamp, action, by}
+  resolution  String?
+  rootCause   String?
+  startedAt   DateTime @default(now())
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model BackupRecord {
+  id          String   @id @default(cuid())
+  type        String   // full, incremental, snapshot
+  scope       String   // database, files, configuration
+  size        Int?     // bytes
+  storagePath String?
+  status      String   @default("scheduled") // scheduled, in_progress, completed, failed, verified
+  verifiedAt  DateTime?
+  notes       String?
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+}
+
+model DRPlan {
+  id              String   @id @default(cuid())
+  name            String
+  description     String
+  rtoMinutes      Int      @default(60)  // Recovery Time Objective
+  rpoMinutes      Int      @default(15)  // Recovery Point Objective
+  strategy        String   // active_passive, active_active, backup_restore
+  status          String   @default("draft") // draft, approved, tested, active
+  lastTestDate    DateTime?
+  nextTestDate    DateTime?
+  responsibleTeam String?
+  steps           String?  // JSON: array of step objects
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model KnownIssue {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  severity    String   @default("medium") // low, medium, high, critical
+  category    String   // functional, performance, ux, data, integration
+  status      String   @default("open") // open, investigating, workaround_available, fix_planned, fixed
+  workaround  String?
+  affectedCountries String? // JSON array
+  fixVersion  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model MaintenanceItem {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  category    String   // feature, enhancement, tech_debt, security, compliance, performance
+  priority    String   @default("medium") // low, medium, high, critical
+  effort      String   @default("medium") // small, medium, large
+  status      String   @default("backlog") // backlog, planned, in_progress, completed, deferred
+  targetDate  DateTime?
+  completedAt DateTime?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ServiceMaturity {
+  id                  String   @id @default(cuid())
+  dimension           String   // reliability, performance, security, observability, support, documentation
+  currentLevel        Int      @default(1) // 1-5
+  targetLevel         Int      @default(3)
+  description         String
+  evidence            String?
+  recommendations     String?
+  assessedAt          DateTime @default(now())
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+// ============================================================
+// Sprint 10: Outcome Measurement, Month-12 Review
+// ============================================================
+
+model OutcomeKPI {
+  id              String   @id @default(cuid())
+  name            String
+  description     String
+  category        String   // activation, adoption, efficiency, quality, impact
+  measurementUnit String   // percent, hours, count, score, ratio
+  baseline        Float?
+  target          Float?
+  actual          Float?
+  period          String
+  country         String?
+  evidence        String?
+  status          String   @default("defined") // defined, baseline_set, tracking, achieved, missed
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model AdoptionMetric {
+  id              String   @id @default(cuid())
+  metric          String   // daily_active_users, weekly_active_users, meetings_logged, extractions_reviewed, sync_success_rate
+  country         String
+  period          String
+  value           Float
+  target          Float?
+  previousPeriod  Float?
+  unit            String   // count, percent, hours
+  collectedAt     DateTime @default(now())
+  createdAt       DateTime @default(now())
+}
+
+model ContinuousImprovementItem {
+  id              String   @id @default(cuid())
+  title           String
+  description     String
+  category        String   // process, technology, training, data_quality, user_experience, integration
+  source          String   // feedback, incident, review, observation, benchmark
+  priority        String   @default("medium") // low, medium, high, critical
+  impact          String?  // low, medium, high
+  effort          String?  // small, medium, large
+  status          String   @default("identified") // identified, analyzed, planned, in_progress, implemented, verified, closed
+  owner           String?
+  targetDate      DateTime?
+  completedAt     DateTime?
+  outcomes        String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Month12Review {
+  id                String   @id @default(cuid())
+  section           String   // executive_summary, kpi_outcomes, adoption_analysis, impact_stories, lessons_learned, recommendations, next_steps
+  title             String
+  content           String
+  status            String   @default("draft") // draft, reviewed, approved, published
+  author            String?
+  reviewer          String?
+  reviewDate        DateTime?
+  approvalDate      DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model ExecutiveReviewPack {
+  id              String   @id @default(cuid())
+  title           String
+  description     String
+  section         String   // overview, kpi_dashboard, country_highlights, risk_assessment, financial_impact, strategic_recommendations
+  audience        String   // board, executive, program_team, donors
+  status          String   @default("draft") // draft, reviewed, approved, published
+  content         String?  // JSON: structured content
+  dataSources     String?  // JSON: array of source references
+  author          String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
