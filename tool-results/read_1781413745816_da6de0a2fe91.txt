@@ -1,0 +1,822 @@
+     1→     1→     1→# Aceli LAT Production Build Sprint Plan
+     2→     2→     2→
+     3→     3→     3→Version: 1.0  
+     4→     4→     4→Owner: AI Delivery Orchestrator  
+     5→     5→     5→Project: AI-Enabled Lender Activation Tool (LAT) + Production Delivery Framework  
+     6→     6→     6→Delivery model: Production-grade, documentation-first, audit-ready, human-in-the-loop
+     7→     7→     7→
+     8→     8→     8→---
+     9→     9→     9→
+    10→    10→    10→## 1. Purpose
+    11→    11→    11→
+    12→    12→    12→This document defines the end-to-end sprint plan for building the full production application proposed in the Aceli Africa RFP. It is designed for execution by a multi-agent engineering organisation and covers delivery phases, AI-agent rules, architecture constraints, sprint goals, backlog themes, quality gates, documentation outputs, release governance, and rollout requirements.
+    13→    13→    13→
+    14→    14→    14→This plan is intentionally **production-first**, not MVP-first. Every sprint must produce working software, controlled documentation, test evidence, and operational artifacts.
+    15→    15→    15→
+    16→    16→    16→---
+    17→    17→    17→
+    18→    18→    18→## 2. RFP-aligned delivery constraints
+    19→    19→    19→
+    20→    20→    20→The build must comply with the following non-negotiable constraints from the RFP:
+    21→    21→    21→
+    22→    22→    22→- Salesforce remains the primary system of record for lender relationship data and relevant structured lender records.
+    23→    23→    23→- The LAT platform is the field-facing workflow and intelligence layer.
+    24→    24→    24→- Power BI remains the analytics and reporting layer; it must not become the operational system of record.
+    25→    25→    25→- The benchmarking data store must be fed through a controlled, validated pathway only.
+    26→    26→    26→- No shadow databases, unmanaged exports, or manual reconciliation routines are allowed.
+    27→    27→    27→- All AI-suggested updates require human review before write-back to approved systems.
+    28→    28→    28→- All AI-assisted decisions and outputs must produce audit-ready logs.
+    29→    29→    29→- No lender-level or borrower-level data may be used to train vendor-owned, shared, or third-party models.
+    30→    30→    30→- All processing must run only within Aceli-approved enterprise tenants or approved vendor platforms.
+    31→    31→    31→- The solution must support low-bandwidth operation and offline capture with later synchronization.
+    32→    32→    32→- The solution must target 99.5% availability during business hours.
+    33→    33→    33→- Training, change management, rollout support, and administrator handover are in scope.
+    34→    34→    34→
+    35→    35→    35→---
+    36→    36→    36→
+    37→    37→    37→## 3. Required and allowed technology stack
+    38→    38→    38→
+    39→    39→    39→Only the following stack elements are explicitly mandated or directly referenced by the RFP and must be treated as required or controlled:
+    40→    40→    40→
+    41→    41→    41→### 3.1 Required enterprise platforms
+    42→    42→    42→- **Salesforce**: system of record, API integration target, structured lender data authority.
+    43→    43→    43→- **Power BI**: reporting, analytics, and visualization layer.
+    44→    44→    44→- **Google Workspace**: approved enterprise tenant for collaboration/document operations where applicable.
+    45→    45→    45→- **Claude Team or Claude Enterprise**: approved AI platform option for governed AI processing.
+    46→    46→    46→
+    47→    47→    47→### 3.2 Approved-by-review components
+    48→    48→    48→Any additional application runtime, middleware, storage, queue, mobile/web framework, observability stack, transcription component, or integration platform must:
+    49→    49→    49→- pass Aceli information security review,
+    50→    50→    50→- be added to the approved list before contract execution if vendor-provided,
+    51→    51→    51→- operate without violating tenant, data residency, audit, and no-training requirements.
+    52→    52→    52→
+    53→    53→    53→### 3.3 Recommended implementation pattern
+    54→    54→    54→To stay faithful to the RFP, the AI agents must use this technology pattern:
+    55→    55→    55→- **Frontend channel**: mobile-first responsive web application or PWA for field use, with desktop-ready HQ experience.
+    56→    56→    56→- **Application services layer**: controlled API/service layer for workflow orchestration, review state, sync, audit, and exception handling.
+    57→    57→    57→- **AI services layer**: governed transcription, extraction, summarization, and prompt orchestration using approved enterprise AI tenants only.
+    58→    58→    58→- **Integration layer**: Salesforce APIs, controlled benchmarking feed, approved analytics outputs.
+    59→    59→    59→- **Observability layer**: immutable audit logs, application logs, sync logs, AI decision logs, user action logs.
+    60→    60→    60→- **Identity and access layer**: role-based access control aligned to country, HQ, executive, and product owner roles.
+    61→    61→    61→
+    62→    62→    62→### 3.4 Strict stack rules for AI agents
+    63→    63→    63→AI agents must not introduce any of the following without explicit approval:
+    64→    64→    64→- direct production dependency on unapproved public LLM endpoints,
+    65→    65→    65→- local shadow databases acting as source of truth,
+    66→    66→    66→- spreadsheet export-based reconciliation workflows,
+    67→    67→    67→- unreviewed schema mutations in Salesforce,
+    68→    68→    68→- dashboards used as transactional capture tools,
+    69→    69→    69→- AI auto-writeback bypassing reviewer approval.
+    70→    70→    70→
+    71→    71→    71→---
+    72→    72→    72→
+    73→    73→    73→## 4. AI agent operating model
+    74→    74→    74→
+    75→    75→    75→### 4.1 Core agent roles
+    76→    76→    76→- Delivery Orchestrator Agent
+    77→    77→    77→- Product Owner Agent
+    78→    78→    78→- Business Analyst Agent
+    79→    79→    79→- Solution Architect Agent
+    80→    80→    80→- Salesforce Integration Agent
+    81→    81→    81→- AI/ML Workflow Agent
+    82→    82→    82→- Frontend Engineering Agent
+    83→    83→    83→- Backend/API Engineering Agent
+    84→    84→    84→- Data Migration Agent
+    85→    85→    85→- DevSecOps Agent
+    86→    86→    86→- QA Automation Agent
+    87→    87→    87→- Technical Writer Agent
+    88→    88→    88→- Release Manager Agent
+    89→    89→    89→- Change Management Agent
+    90→    90→    90→- Red Team / Compliance Agent
+    91→    91→    91→
+    92→    92→    92→### 4.2 Mandatory agent rules
+    93→    93→    93→Every AI agent must follow these rules:
+    94→    94→    94→
+    95→    95→    95→1. **Documentation-first rule**: no feature build starts without linked requirement IDs.
+    96→    96→    96→2. **Traceability rule**: every code task maps to SRS/FRS/user story/API contract/test case IDs.
+    97→    97→    97→3. **Approval-gate rule**: any Salesforce write-back logic requires architect + QA + compliance approval.
+    98→    98→    98→4. **No hallucination rule**: if a platform detail is unknown, create an assumption record; do not invent.
+    99→    99→    99→5. **Human review rule**: all AI-generated lender updates must stop at reviewer state before commit.
+   100→   100→   100→6. **No training rule**: no protected data enters training or fine-tuning workflows.
+   101→   101→   101→7. **Security-first rule**: secrets, tokens, credentials, and tenant settings must never be hardcoded.
+   102→   102→   102→8. **Migration discipline rule**: no production data migration without dry run, reconciliation report, and rollback plan.
+   103→   103→   103→9. **Testing rule**: no story is complete without automated tests or explicit approved test evidence.
+   104→   104→   104→10. **Audit rule**: all meaningful user and AI actions must generate structured logs.
+   105→   105→   105→11. **Offline-first rule**: field features must degrade gracefully under weak or zero connectivity.
+   106→   106→   106→12. **Definition-of-done rule**: code, tests, docs, security checks, and release notes are all required.
+   107→   107→   107→13. **Post-coder validation rule**: all generated code must run through linting, static analysis, unit/integration checks, and architectural policy validation.
+   108→   108→   108→14. **No repetition rule**: agents must reuse approved modules, templates, and patterns; avoid duplicate implementations.
+   109→   109→   109→15. **Release governance rule**: no production release without signed release checklist and rollback plan.
+   110→   110→   110→
+   111→   111→   111→### 4.3 Agent confidence and HITL thresholds
+   112→   112→   112→- Confidence > 0.90: autonomous execution allowed within approved scope.
+   113→   113→   113→- Confidence 0.70–0.89: autonomous draft allowed, mandatory peer-agent review required.
+   114→   114→   114→- Confidence < 0.70: stop and escalate to HITL or lead architect review.
+   115→   115→   115→- Any security, data governance, or production data task: HITL review always mandatory.
+   116→   116→   116→
+   117→   117→   117→---
+   118→   118→   118→
+   119→   119→   119→## 5. Documentation system to be generated across the program
+   120→   120→   120→
+   121→   121→   121→The sprint plan requires the AI team to generate and maintain the following documents.
+   122→   122→   122→
+   123→   123→   123→### 5.1 Product and requirements docs
+   124→   124→   124→- Vision Brief
+   125→   125→   125→- BRD (Business Requirements Document)
+   126→   126→   126→- PRD (Product Requirements Document)
+   127→   127→   127→- SRS (Software Requirements Specification)
+   128→   128→   128→- FRS (Functional Requirements Specification)
+   129→   129→   129→- NFR Specification
+   130→   130→   130→- User Personas and Stakeholder Matrix
+   131→   131→   131→- User Story Catalogue
+   132→   132→   132→- Acceptance Criteria Catalogue
+   133→   133→   133→- Requirements Traceability Matrix (RTM)
+   134→   134→   134→
+   135→   135→   135→### 5.2 Architecture and engineering docs
+   136→   136→   136→- Solution Architecture Document
+   137→   137→   137→- Deployment Architecture Document
+   138→   138→   138→- Integration Architecture Document
+   139→   139→   139→- Data Flow Diagram Pack
+   140→   140→   140→- Sequence Diagram Pack
+   141→   141→   141→- RBAC Matrix
+   142→   142→   142→- Offline Sync Design
+   143→   143→   143→- Audit Logging Design
+   144→   144→   144→- AI Prompt/Workflow Specification
+   145→   145→   145→- Salesforce Object/Field Mapping Document
+   146→   146→   146→- Benchmarking Data Pathway Specification
+   147→   147→   147→- ADRs (Architecture Decision Records)
+   148→   148→   148→
+   149→   149→   149→### 5.3 Delivery and QA docs
+   150→   150→   150→- Test Strategy
+   151→   151→   151→- Unit Test Plan
+   152→   152→   152→- Integration Test Plan
+   153→   153→   153→- UAT Plan
+   154→   154→   154→- Performance Test Plan
+   155→   155→   155→- Security Test Plan
+   156→   156→   156→- Offline/Sync Test Plan
+   157→   157→   157→- Release Readiness Checklist
+   158→   158→   158→- Defect Management SOP
+   159→   159→   159→- Environment Readiness Checklist
+   160→   160→   160→- Pilot Go-Live Checklist
+   161→   161→   161→- Rollout Readiness Checklist per country
+   162→   162→   162→
+   163→   163→   163→### 5.4 Operations and support docs
+   164→   164→   164→- Runbook
+   165→   165→   165→- Incident Management SOP
+   166→   166→   166→- Backup and Restore SOP
+   167→   167→   167→- Disaster Recovery Plan
+   168→   168→   168→- Monitoring and Alerting Guide
+   169→   169→   169→- Support Model and SLA Guide
+   170→   170→   170→- Admin Handover Guide
+   171→   171→   171→- Warranty Support Guide
+   172→   172→   172→- Change Management Plan
+   173→   173→   173→- Training Plan
+   174→   174→   174→- Training Materials
+   175→   175→   175→- FAQ / Troubleshooting Guide
+   176→   176→   176→
+   177→   177→   177→### 5.5 Release docs
+   178→   178→   178→- Sprint Release Notes
+   179→   179→   179→- Pilot Release Notes
+   180→   180→   180→- Country Rollout Release Notes
+   181→   181→   181→- Production Release Notes
+   182→   182→   182→- Change Log
+   183→   183→   183→- Known Issues Log
+   184→   184→   184→- Month-12 Outcome Review Template
+   185→   185→   185→
+   186→   186→   186→---
+   187→   187→   187→
+   188→   188→   188→## 6. Delivery phases and sprint calendar
+   189→   189→   189→
+   190→   190→   190→The sprint structure below aligns with the RFP delivery model:
+   191→   191→   191→- **Phase 0 (Weeks 1–4)**: discovery, baseline capture, design sprint, architecture confirmation.
+   192→   192→   192→- **Phase 1 (Weeks 5–13)**: pilot build and deployment in one country by Day 90.
+   193→   193→   193→- **Phase 2 (Months 4–6)**: phased rollout to remaining four countries.
+   194→   194→   194→- **Phase 3 (Post-rollout)**: warranty, support, continuous improvement, operational review.
+   195→   195→   195→
+   196→   196→   196→### Sprint cadence
+   197→   197→   197→- Sprint length: 2 weeks, except Sprint 0 and Sprint 6 which may be shorter/longer to align with pilot deadline.
+   198→   198→   198→- Daily AI sync: automated status, blocker, dependency, and quality update.
+   199→   199→   199→- Weekly governance review: compliance, scope, architecture, and delivery risk review.
+   200→   200→   200→- End-of-sprint outputs: working increment, evidence pack, updated docs, release notes.
+   201→   201→   201→
+   202→   202→   202→---
+   203→   203→   203→
+   204→   204→   204→# 7. Detailed sprint plan
+   205→   205→   205→
+   206→   206→   206→## Sprint 0 — Mobilization, governance, and delivery setup
+   207→   207→   207→**Duration:** Week 1  
+   208→   208→   208→**Goal:** establish governance, environment controls, agent operating model, and documentation structure.
+   209→   209→   209→
+   210→   210→   210→### Build tasks
+   211→   211→   211→- Set up project governance board and approval workflow.
+   212→   212→   212→- Create repository structure for code, docs, architecture, tests, release notes.
+   213→   213→   213→- Configure AI-agent orchestration rules, state model, and approval thresholds.
+   214→   214→   214→- Create requirement ingestion pipeline from RFP to RTM.
+   215→   215→   215→- Create issue taxonomy: feature, infra, bug, security, migration, documentation, release.
+   216→   216→   216→- Set up environment strategy: local/dev/test/UAT/prod.
+   217→   217→   217→- Define approved tenant inventory and platform review workflow.
+   218→   218→   218→- Define NDA/DPA gating policy: no sensitive data access before execution.
+   219→   219→   219→- Create naming conventions, branching strategy, semantic versioning policy, and change approval flow.
+   220→   220→   220→
+   221→   221→   221→### Documentation deliverables
+   222→   222→   222→- Vision Brief
+   223→   223→   223→- Delivery Charter
+   224→   224→   224→- Governance Model
+   225→   225→   225→- Documentation Index
+   226→   226→   226→- RTM v1
+   227→   227→   227→- Environment Strategy Document
+   228→   228→   228→- Security & Tenant Approval Checklist
+   229→   229→   229→- AI Agent Operating Rules
+   230→   230→   230→
+   231→   231→   231→### Verification
+   232→   232→   232→- All repositories and doc folders created.
+   233→   233→   233→- Approval matrix published.
+   234→   234→   234→- Governance gate blocks real data access until legal/security prerequisites are complete.
+   235→   235→   235→
+   236→   236→   236→### Testing
+   237→   237→   237→- Repo policy validation
+   238→   238→   238→- CI skeleton validation
+   239→   239→   239→- Secrets scanning baseline
+   240→   240→   240→
+   241→   241→   241→### Release output
+   242→   242→   242→- `v0.1.0-mobilization`
+   243→   243→   243→- Mobilization release notes
+   244→   244→   244→
+   245→   245→   245→---
+   246→   246→   246→
+   247→   247→   247→## Sprint 1 — Discovery, business analysis, and baseline capture
+   248→   248→   248→**Duration:** Week 2  
+   249→   249→   249→**Goal:** capture current-state workflows, baseline reconciliation effort, field realities, and scope boundaries.
+   250→   250→   250→
+   251→   251→   251→### Build tasks
+   252→   252→   252→- Map current Google Sheets LAT process and pain points.
+   253→   253→   253→- Build current-state process map for Country Directors, Country Managers, LAT Working Group, HQ users.
+   254→   254→   254→- Design baseline time-and-motion study for reconciliation process.
+   255→   255→   255→- Define data domains: lender profile, activation status, narrative notes, extracted updates, review decisions, sync state.
+   256→   256→   256→- Identify all in-scope and out-of-scope capabilities.
+   257→   257→   257→- Build initial user story backlog.
+   258→   258→   258→- Record assumptions and open questions.
+   259→   259→   259→
+   260→   260→   260→### Documentation deliverables
+   261→   261→   261→- BRD
+   262→   262→   262→- PRD
+   263→   263→   263→- Stakeholder Matrix
+   264→   264→   264→- Current-State Process Map
+   265→   265→   265→- Baseline Measurement Plan
+   266→   266→   266→- Baseline Evidence Capture Template
+   267→   267→   267→- User Persona Pack
+   268→   268→   268→- Initial User Story Catalogue
+   269→   269→   269→
+   270→   270→   270→### Verification
+   271→   271→   271→- Current-state workflow signed off.
+   272→   272→   272→- Baseline measurement method approved.
+   273→   273→   273→- Scope boundaries explicitly documented.
+   274→   274→   274→
+   275→   275→   275→### Testing
+   276→   276→   276→- Peer review of BRD/PRD completeness
+   277→   277→   277→- RTM coverage check against RFP
+   278→   278→   278→
+   279→   279→   279→### Release output
+   280→   280→   280→- `v0.2.0-discovery`
+   281→   281→   281→- Discovery release notes
+   282→   282→   282→
+   283→   283→   283→---
+   284→   284→   284→
+   285→   285→   285→## Sprint 2 — Solution design, SRS, FRS, and target architecture
+   286→   286→   286→**Duration:** Weeks 3–4  
+   287→   287→   287→**Goal:** finalize target-state design and all design-time documents required for build start.
+   288→   288→   288→
+   289→   289→   289→### Build tasks
+   290→   290→   290→- Define target-state user journeys.
+   291→   291→   291→- Define system context and component architecture.
+   292→   292→   292→- Define field capture workflow, review workflow, sync workflow, exception workflow.
+   293→   293→   293→- Define AI workflow: transcription, extraction, prompt generation, reviewer assist, audit trail.
+   294→   294→   294→- Define Salesforce integration patterns.
+   295→   295→   295→- Define benchmarking feed design.
+   296→   296→   296→- Define offline-first sync architecture and conflict resolution.
+   297→   297→   297→- Define RBAC model.
+   298→   298→   298→- Define observability and audit architecture.
+   299→   299→   299→- Create NFRs: availability, performance, sync reliability, traceability, security, maintainability.
+   300→   300→   300→
+   301→   301→   301→### Documentation deliverables
+   302→   302→   302→- **SRS v1**
+   303→   303→   303→- **FRS v1**
+   304→   304→   304→- NFR Specification
+   305→   305→   305→- Solution Architecture Document
+   306→   306→   306→- Integration Architecture Document
+   307→   307→   307→- Data Flow Diagrams
+   308→   308→   308→- Sequence Diagrams
+   309→   309→   309→- RBAC Matrix
+   310→   310→   310→- Exception Workflow Spec
+   311→   311→   311→- AI Prompt & Workflow Spec
+   312→   312→   312→- ADR set v1
+   313→   313→   313→- Salesforce Mapping Spec v1
+   314→   314→   314→
+   315→   315→   315→### Verification
+   316→   316→   316→- Week 4 design sign-off pack ready.
+   317→   317→   317→- Architecture preserves Salesforce as source of truth and Power BI as analytics layer.
+   318→   318→   318→- All requirements mapped to implementation epics.
+   319→   319→   319→
+   320→   320→   320→### Testing
+   321→   321→   321→- Architecture review checklist
+   322→   322→   322→- Security design review
+   323→   323→   323→- Compliance review against no-shadow-data and no-training constraints
+   324→   324→   324→
+   325→   325→   325→### Release output
+   326→   326→   326→- `v0.3.0-design-signoff`
+   327→   327→   327→- Design-signoff release notes
+   328→   328→   328→
+   329→   329→   329→---
+   330→   330→   330→
+   331→   331→   331→## Sprint 3 — Platform foundation and engineering baseline
+   332→   332→   332→**Duration:** Weeks 5–6  
+   333→   333→   333→**Goal:** build the production foundation before feature-heavy delivery.
+   334→   334→   334→
+   335→   335→   335→### Build tasks
+   336→   336→   336→- Set up application shell and mobile-first navigation.
+   337→   337→   337→- Implement auth, session handling, role framework, and policy enforcement.
+   338→   338→   338→- Implement environment configuration and secret management.
+   339→   339→   339→- Set up API framework and service boundaries.
+   340→   340→   340→- Set up audit logging backbone.
+   341→   341→   341→- Set up event model and internal workflow state model.
+   342→   342→   342→- Set up CI/CD, static analysis, linting, test runners, artifact publishing.
+   343→   343→   343→- Set up observability: app logs, audit logs, error tracking, sync logs.
+   344→   344→   344→- Create release packaging and rollback framework.
+   345→   345→   345→
+   346→   346→   346→### Documentation deliverables
+   347→   347→   347→- Engineering Standards Guide
+   348→   348→   348→- CI/CD Guide
+   349→   349→   349→- DevSecOps Runbook
+   350→   350→   350→- Logging and Observability Guide
+   351→   351→   351→- API Standards Guide
+   352→   352→   352→- Release Management SOP
+   353→   353→   353→- Environment Provisioning Guide
+   354→   354→   354→- ADR updates
+   355→   355→   355→
+   356→   356→   356→### Verification
+   357→   357→   357→- Foundational services deployable to non-prod environments.
+   358→   358→   358→- Security scan pass baseline.
+   359→   359→   359→- Role and audit systems operational.
+   360→   360→   360→
+   361→   361→   361→### Testing
+   362→   362→   362→- Auth tests
+   363→   363→   363→- RBAC tests
+   364→   364→   364→- CI smoke tests
+   365→   365→   365→- Static analysis
+   366→   366→   366→- Dependency vulnerability scan
+   367→   367→   367→
+   368→   368→   368→### Release output
+   369→   369→   369→- `v0.4.0-foundation`
+   370→   370→   370→- Foundation release notes
+   371→   371→   371→
+   372→   372→   372→---
+   373→   373→   373→
+   374→   374→   374→## Sprint 4 — Field capture, transcription intake, and draft extraction
+   375→   375→   375→**Duration:** Weeks 7–8  
+   376→   376→   376→**Goal:** implement core field intelligence capture for voice and text.
+   377→   377→   377→
+   378→   378→   378→### Build tasks
+   379→   379→   379→- Build lender search/profile access UI.
+   380→   380→   380→- Build meeting context screen showing lender status and recent activity.
+   381→   381→   381→- Build voice memo capture and typed note capture flows.
+   382→   382→   382→- Build transcript intake pipeline in approved AI tenant.
+   383→   383→   383→- Build narrative storage and draft extraction workflow.
+   384→   384→   384→- Map extracted content into six activation areas.
+   385→   385→   385→- Build confidence scoring and extraction review flags.
+   386→   386→   386→- Build draft-save and sync queue support for weak connectivity.
+   387→   387→   387→- Build local/offline draft persistence and upload retry behavior.
+   388→   388→   388→
+   389→   389→   389→### Documentation deliverables
+   390→   390→   390→- Capture Module Design Doc
+   391→   391→   391→- Transcription & Extraction Design Doc
+   392→   392→   392→- Activation-Area Mapping Guide
+   393→   393→   393→- Offline Drafting Spec
+   394→   394→   394→- AI Confidence and Review Policy
+   395→   395→   395→- Field UX Guide v1
+   396→   396→   396→- API Contracts v1
+   397→   397→   397→
+   398→   398→   398→### Verification
+   399→   399→   399→- User can access lender, record/upload voice, type notes, and obtain draft extraction.
+   400→   400→   400→- No AI-generated field update is committed automatically.
+   401→   401→   401→- Offline drafts survive connectivity loss.
+   402→   402→   402→
+   403→   403→   403→### Testing
+   404→   404→   404→- Unit tests for mapping rules
+   405→   405→   405→- Integration tests for transcription pipeline
+   406→   406→   406→- Offline persistence tests
+   407→   407→   407→- UX functional tests
+   408→   408→   408→- Failure/retry tests
+   409→   409→   409→
+   410→   410→   410→### Release output
+   411→   411→   411→- `v0.5.0-capture-ai-draft`
+   412→   412→   412→- Capture feature release notes
+   413→   413→   413→
+   414→   414→   414→---
+   415→   415→   415→
+   416→   416→   416→## Sprint 5 — Review workbench, exceptions, approvals, and controlled write-back
+   417→   417→   417→**Duration:** Weeks 9–10  
+   418→   418→   418→**Goal:** implement human-in-the-loop governance and controlled system updates.
+   419→   419→   419→
+   420→   420→   420→### Build tasks
+   421→   421→   421→- Build reviewer workbench for AI-suggested updates.
+   422→   422→   422→- Implement edit/approve/reject/request-follow-up states.
+   423→   423→   423→- Implement exception queues:
+   424→   424→   424→  - missing required fields,
+   425→   425→   425→  - low confidence,
+   426→   426→   426→  - conflicting existing values,
+   427→   427→   427→  - invalid state transitions,
+   428→   428→   428→  - failed sync,
+   429→   429→   429→  - reviewer rejection.
+   430→   430→   430→- Implement controlled Salesforce write-back adapters.
+   431→   431→   431→- Implement audit timeline and reviewer rationale capture.
+   432→   432→   432→- Implement prompt history and recommendation history visibility.
+   433→   433→   433→- Build data validation rules and pre-commit checks.
+   434→   434→   434→
+   435→   435→   435→### Documentation deliverables
+   436→   436→   436→- Review Workflow Spec
+   437→   437→   437→- Exception Handling Spec
+   438→   438→   438→- Salesforce Sync Spec v1
+   439→   439→   439→- Data Validation Rules Catalogue
+   440→   440→   440→- Audit Trail Specification
+   441→   441→   441→- Reviewer SOP
+   442→   442→   442→- Updated FRS/SRS
+   443→   443→   443→
+   444→   444→   444→### Verification
+   445→   445→   445→- All write-backs require explicit reviewer action.
+   446→   446→   446→- Exception handling covers incomplete/ambiguous updates.
+   447→   447→   447→- Audit logs are immutable and exportable.
+   448→   448→   448→
+   449→   449→   449→### Testing
+   450→   450→   450→- Review-state transition tests
+   451→   451→   451→- Salesforce integration tests
+   452→   452→   452→- Negative tests for invalid updates
+   453→   453→   453→- Audit log completeness tests
+   454→   454→   454→- Permission boundary tests
+   455→   455→   455→
+   456→   456→   456→### Release output
+   457→   457→   457→- `v0.6.0-review-sync-governance`
+   458→   458→   458→- Review and sync release notes
+   459→   459→   459→
+   460→   460→   460→---
+   461→   461→   461→
+   462→   462→   462→## Sprint 6 — HQ views, scorecard support, benchmarking pathway, and pilot hardening
+   463→   463→   463→**Duration:** Weeks 11–13  
+   464→   464→   464→**Goal:** complete pilot-ready scope and hit Day-90 operational readiness.
+   465→   465→   465→
+   466→   466→   466→### Build tasks
+   467→   467→   467→- Build HQ dashboards and aggregated lender activation views.
+   468→   468→   468→- Build intervention-priority summaries and review workload views.
+   469→   469→   469→- Implement controlled export/feed to approved benchmarking pathway.
+   470→   470→   470→- Implement scorecard-support views and traceability to reviewed updates.
+   471→   471→   471→- Finalize performance tuning, sync resilience, and logging completeness.
+   472→   472→   472→- Finalize pilot data migration from Google Sheets.
+   473→   473→   473→- Load priority lenders for pilot country.
+   474→   474→   474→- Complete pilot training, UAT, go-live prep, and hypercare setup.
+   475→   475→   475→
+   476→   476→   476→### Documentation deliverables
+   477→   477→   477→- HQ Reporting Functional Spec
+   478→   478→   478→- Benchmarking Feed Spec
+   479→   479→   479→- Google Sheets Migration Runbook
+   480→   480→   480→- Migration Validation Report
+   481→   481→   481→- UAT Plan and UAT Evidence Pack
+   482→   482→   482→- Pilot Go-Live Checklist
+   483→   483→   483→- Pilot Training Guide
+   484→   484→   484→- Pilot Release Notes
+   485→   485→   485→
+   486→   486→   486→### Verification
+   487→   487→   487→- Priority lenders loaded.
+   488→   488→   488→- Lender activation data visible.
+   489→   489→   489→- Pilot users can work end-to-end.
+   490→   490→   490→- Benchmarking pathway controlled and validated.
+   491→   491→   491→- Pilot environment operational by Day 90.
+   492→   492→   492→
+   493→   493→   493→### Testing
+   494→   494→   494→- End-to-end tests from capture to reviewed write-back
+   495→   495→   495→- Pilot load tests
+   496→   496→   496→- Migration reconciliation tests
+   497→   497→   497→- UAT sign-off
+   498→   498→   498→- Observability coverage test
+   499→   499→   499→
+   500→   500→   500→### Release output
+   501→   501→   501→- `v1.0.0-pilot-production`
+   502→   502→   502→- Pilot production release notes
+   503→   503→   503→
+   504→   504→   504→---
+   505→   505→   505→
+   506→   506→   506→## Sprint 7 — Pilot stabilization, baseline comparison, and rollout wave 1
+   507→   507→   507→**Duration:** Weeks 14–16  
+   508→   508→   508→**Goal:** stabilize pilot, prove KPI movement, and rollout to first two non-pilot countries.
+   509→   509→   509→
+   510→   510→   510→### Build tasks
+   511→   511→   511→- Resolve pilot defects and operational issues.
+   512→   512→   512→- Measure reconciliation time reduction against approved baseline.
+   513→   513→   513→- Measure activation gap visibility coverage.
+   514→   514→   514→- Collect structured user feedback.
+   515→   515→   515→- Prepare rollout wave packs for countries 2 and 3.
+   516→   516→   516→- Execute data migration, configuration, role setup, and training for wave 1 countries.
+   517→   517→   517→
+   518→   518→   518→### Documentation deliverables
+   519→   519→   519→- Pilot KPI Validation Report
+   520→   520→   520→- Rollout Wave 1 Plan
+   521→   521→   521→- Country Configuration Checklist
+   522→   522→   522→- Country Training Pack
+   523→   523→   523→- Hypercare SOP
+   524→   524→   524→- Defect Triage Report
+   525→   525→   525→- Sprint release notes
+   526→   526→   526→
+   527→   527→   527→### Verification
+   528→   528→   528→- Evidence exists for KPI reporting.
+   529→   529→   529→- Countries 2 and 3 are enabled with trained users and verified access.
+   530→   530→   530→
+   531→   531→   531→### Testing
+   532→   532→   532→- Regression suite
+   533→   533→   533→- Country configuration tests
+   534→   534→   534→- Training completion validation
+   535→   535→   535→- Access and sync checks
+   536→   536→   536→
+   537→   537→   537→### Release output
+   538→   538→   538→- `v1.1.0-rollout-wave-1`
+   539→   539→   539→- Wave 1 rollout release notes
+   540→   540→   540→
+   541→   541→   541→---
+   542→   542→   542→
+   543→   543→   543→## Sprint 8 — Rollout wave 2 and operational readiness across all five countries
+   544→   544→   544→**Duration:** Weeks 17–19  
+   545→   545→   545→**Goal:** complete rollout to countries 4 and 5 and establish full multi-country operations.
+   546→   546→   546→
+   547→   547→   547→### Build tasks
+   548→   548→   548→- Execute rollout to countries 4 and 5.
+   549→   549→   549→- Tune regional configuration and support materials.
+   550→   550→   550→- Validate weekly active use instrumentation across all countries.
+   551→   551→   551→- Validate bidirectional Salesforce synchronization at full rollout scope.
+   552→   552→   552→- Refine monitoring, support routing, and admin tooling.
+   553→   553→   553→
+   554→   554→   554→### Documentation deliverables
+   555→   555→   555→- Rollout Wave 2 Plan
+   556→   556→   556→- Multi-Country Support Guide
+   557→   557→   557→- Admin Handover Pack v1
+   558→   558→   558→- Monitoring & Alerting Guide
+   559→   559→   559→- Country Readiness Evidence Pack
+   560→   560→   560→- Release notes
+   561→   561→   561→
+   562→   562→   562→### Verification
+   563→   563→   563→- Weekly active use can be measured in all 5 countries.
+   564→   564→   564→- Bidirectional Salesforce integration operational.
+   565→   565→   565→- Multi-country support model active.
+   566→   566→   566→
+   567→   567→   567→### Testing
+   568→   568→   568→- Multi-country regression suite
+   569→   569→   569→- Sync throughput and retry tests
+   570→   570→   570→- Support runbook drill
+   571→   571→   571→- Observability drill
+   572→   572→   572→
+   573→   573→   573→### Release output
+   574→   574→   574→- `v1.2.0-full-rollout`
+   575→   575→   575→- Full rollout release notes
+   576→   576→   576→
+   577→   577→   577→---
+   578→   578→   578→
+   579→   579→   579→## Sprint 9 — Warranty, stabilization, handover, and service maturity
+   580→   580→   580→**Duration:** Weeks 20–24  
+   581→   581→   581→**Goal:** complete the minimum post-rollout warranty period and operational handover.
+   582→   582→   582→
+   583→   583→   583→### Build tasks
+   584→   584→   584→- Operate warranty support model.
+   585→   585→   585→- Resolve production defects within SLA.
+   586→   586→   586→- Finalize admin handover.
+   587→   587→   587→- Finalize support and incident procedures.
+   588→   588→   588→- Produce long-term maintenance backlog.
+   589→   589→   589→- Produce service maturity recommendations.
+   590→   590→   590→
+   591→   591→   591→### Documentation deliverables
+   592→   592→   592→- Warranty Support Report
+   593→   593→   593→- Admin Handover Guide final
+   594→   594→   594→- Support SLA Guide
+   595→   595→   595→- Incident Response SOP
+   596→   596→   596→- Backup/Restore SOP
+   597→   597→   597→- Disaster Recovery Plan
+   598→   598→   598→- Known Issues Register
+   599→   599→   599→- Maintenance Roadmap
+   600→   600→   600→- Release notes
+   601→   601→   601→
+   602→   602→   602→### Verification
+   603→   603→   603→- Handover accepted.
+   604→   604→   604→- Support procedures validated.
+   605→   605→   605→- Warranty obligations met.
+   606→   606→   606→
+   607→   607→   607→### Testing
+   608→   608→   608→- Restore drill
+   609→   609→   609→- Incident response tabletop
+   610→   610→   610→- User admin run-through
+   611→   611→   611→
+   612→   612→   612→### Release output
+   613→   613→   613→- `v1.3.0-warranty-complete`
+   614→   614→   614→- Warranty completion release notes
+   615→   615→   615→
+   616→   616→   616→---
+   617→   617→   617→
+   618→   618→   618→## Sprint 10 — Outcome measurement pack and month-12 review readiness
+   619→   619→   619→**Duration:** post-rollout / scheduled review prep  
+   620→   620→   620→**Goal:** prepare the evidence base for the 12-month activation outcome review.
+   621→   621→   621→
+   622→   622→   622→### Build tasks
+   623→   623→   623→- Define outcome review KPIs and data collection model.
+   624→   624→   624→- Build reporting templates for actionability and lender activation effectiveness.
+   625→   625→   625→- Create feedback and evidence capture process.
+   626→   626→   626→- Produce continuous-improvement recommendations.
+   627→   627→   627→
+   628→   628→   628→### Documentation deliverables
+   629→   629→   629→- Month-12 Outcome Review Template
+   630→   630→   630→- Adoption Metrics Model
+   631→   631→   631→- Continuous Improvement Backlog
+   632→   632→   632→- Executive Review Pack Template
+   633→   633→   633→
+   634→   634→   634→### Verification
+   635→   635→   635→- Outcome review framework ready well before Month 12.
+   636→   636→   636→
+   637→   637→   637→### Testing
+   638→   638→   638→- Data availability check
+   639→   639→   639→- Reporting logic validation
+   640→   640→   640→
+   641→   641→   641→### Release output
+   642→   642→   642→- `v1.4.0-outcome-review-ready`
+   643→   643→   643→- Outcome review readiness release notes
+   644→   644→   644→
+   645→   645→   645→---
+   646→   646→   646→
+   647→   647→   647→# 8. Cross-sprint QA and engineering quality gates
+   648→   648→   648→
+   649→   649→   649→## 8.1 Mandatory quality gates for every sprint
+   650→   650→   650→- Requirements traceability updated.
+   651→   651→   651→- Architecture conformance check passed.
+   652→   652→   652→- Security review completed for changed surfaces.
+   653→   653→   653→- Static analysis and linting passed.
+   654→   654→   654→- Automated tests passed at agreed threshold.
+   655→   655→   655→- Documentation updated.
+   656→   656→   656→- Release notes generated.
+   657→   657→   657→- Rollback plan updated if release affects production path.
+   658→   658→   658→- Audit coverage check passed for user/AI flows.
+   659→   659→   659→
+   660→   660→   660→## 8.2 Test layers
+   661→   661→   661→- Unit tests
+   662→   662→   662→- Integration tests
+   663→   663→   663→- Contract/API tests
+   664→   664→   664→- E2E tests
+   665→   665→   665→- Offline/sync tests
+   666→   666→   666→- UAT
+   667→   667→   667→- Regression tests
+   668→   668→   668→- Performance tests
+   669→   669→   669→- Security tests
+   670→   670→   670→- Migration validation tests
+   671→   671→   671→
+   672→   672→   672→## 8.3 Production acceptance checkpoints
+   673→   673→   673→- Week 4 design sign-off pack complete.
+   674→   674→   674→- Day 90 pilot operational.
+   675→   675→   675→- Priority lenders loaded.
+   676→   676→   676→- Activation data visible.
+   677→   677→   677→- ≥60% reconciliation time reduction evidenced.
+   678→   678→   678→- Monthly active use evidenced.
+   679→   679→   679→- Weekly active use across five countries evidenced.
+   680→   680→   680→- Bidirectional Salesforce sync operational.
+   681→   681→   681→
+   682→   682→   682→---
+   683→   683→   683→
+   684→   684→   684→# 9. Data migration workstream rules
+   685→   685→   685→
+   686→   686→   686→The RFP explicitly includes migration of agreed LAT data from Google Sheets. The AI agents must treat migration as a full sub-program, not a script.
+   687→   687→   687→
+   688→   688→   688→### Migration stages
+   689→   689→   689→1. Inventory current Google Sheets structures.
+   690→   690→   690→2. Profile field quality and completeness.
+   691→   691→   691→3. Define mapping to approved target schema.
+   692→   692→   692→4. Define data cleanse rules.
+   693→   693→   693→5. Define enrichment and normalization rules.
+   694→   694→   694→6. Build dry-run migration scripts.
+   695→   695→   695→7. Generate reconciliation reports.
+   696→   696→   696→8. Execute UAT validation on migrated data.
+   697→   697→   697→9. Execute production migration with rollback readiness.
+   698→   698→   698→10. Generate post-migration certification report.
+   699→   699→   699→
+   700→   700→   700→### Migration deliverables
+   701→   701→   701→- Source-to-target mapping
+   702→   702→   702→- Data quality report
+   703→   703→   703→- Migration runbook
+   704→   704→   704→- Dry-run evidence
+   705→   705→   705→- Reconciliation report
+   706→   706→   706→- Production migration sign-off
+   707→   707→   707→
+   708→   708→   708→---
+   709→   709→   709→
+   710→   710→   710→# 10. Release management model
+   711→   711→   711→
+   712→   712→   712→## 10.1 Release types
+   713→   713→   713→- Documentation release
+   714→   714→   714→- Non-production technical release
+   715→   715→   715→- Pilot release
+   716→   716→   716→- Country rollout release
+   717→   717→   717→- Production patch release
+   718→   718→   718→- Warranty hotfix release
+   719→   719→   719→
+   720→   720→   720→## 10.2 Release notes minimum structure
+   721→   721→   721→Every release note must include:
+   722→   722→   722→- version,
+   723→   723→   723→- sprint number,
+   724→   724→   724→- release date,
+   725→   725→   725→- included features,
+   726→   726→   726→- fixes,
+   727→   727→   727→- schema changes,
+   728→   728→   728→- integration changes,
+   729→   729→   729→- known issues,
+   730→   730→   730→- rollback notes,
+   731→   731→   731→- documentation updates,
+   732→   732→   732→- approvers.
+   733→   733→   733→
+   734→   734→   734→## 10.3 Definition of done for release
+   735→   735→   735→A release is complete only when:
+   736→   736→   736→- code is merged,
+   737→   737→   737→- tests pass,
+   738→   738→   738→- docs are updated,
+   739→   739→   739→- release note is published,
+   740→   740→   740→- deployment evidence exists,
+   741→   741→   741→- rollback plan exists,
+   742→   742→   742→- approvers sign off.
+   743→   743→   743→
+   744→   744→   744→---
+   745→   745→   745→
+   746→   746→   746→# 11. Minimum documentation delivery by sprint
+   747→   747→   747→
+   748→   748→   748→| Sprint | Must-have documents |
+   749→   749→   749→|---|---|
+   750→   750→   750→| Sprint 0 | Governance Model, Documentation Index, RTM v1, Environment Strategy, Agent Rules |
+   751→   751→   751→| Sprint 1 | BRD, PRD, Personas, Baseline Plan, Current-State Process Map |
+   752→   752→   752→| Sprint 2 | SRS, FRS, NFR Spec, Architecture Docs, RBAC, Data Flows, ADRs |
+   753→   753→   753→| Sprint 3 | Engineering Standards, CI/CD Guide, Logging Guide, Release SOP |
+   754→   754→   754→| Sprint 4 | Capture Module Spec, AI Workflow Spec, Offline Spec, API Contracts |
+   755→   755→   755→| Sprint 5 | Review Workflow Spec, Exception Spec, Sync Spec, Audit Spec |
+   756→   756→   756→| Sprint 6 | Migration Runbook, UAT Pack, Pilot Checklist, Pilot Release Notes |
+   757→   757→   757→| Sprint 7 | KPI Validation Report, Rollout Wave 1 Plan, Hypercare SOP |
+   758→   758→   758→| Sprint 8 | Multi-Country Support Guide, Admin Handover Pack, Monitoring Guide |
+   759→   759→   759→| Sprint 9 | Warranty Report, Incident SOP, DR Plan, Backup/Restore SOP |
+   760→   760→   760→| Sprint 10 | Month-12 Review Template, Continuous Improvement Backlog |
+   761→   761→   761→
+   762→   762→   762→---
+   763→   763→   763→
+   764→   764→   764→# 12. AI-agent coding standards
+   765→   765→   765→
+   766→   766→   766→The AI engineering agents must follow these development standards:
+   767→   767→   767→
+   768→   768→   768→- Modular service boundaries only.
+   769→   769→   769→- Strong typing where supported.
+   770→   770→   770→- API-first contracts before implementation.
+   771→   771→   771→- Reusable validation and audit middleware.
+   772→   772→   772→- Config-driven prompt and rules management.
+   773→   773→   773→- No embedded business rules inside UI-only layers.
+   774→   774→   774→- No bypass of review workflow.
+   775→   775→   775→- Idempotent integration design for sync/retry paths.
+   776→   776→   776→- Explicit error taxonomy and retry policy.
+   777→   777→   777→- Feature flags for risky rollout paths.
+   778→   778→   778→- Structured logs with correlation IDs.
+   779→   779→   779→- Test doubles or sandboxes for external integration testing.
+   780→   780→   780→- Documentation updates in same change set as feature implementation.
+   781→   781→   781→
+   782→   782→   782→---
+   783→   783→   783→
+   784→   784→   784→# 13. Final delivery artifacts for the full production program
+   785→   785→   785→
+   786→   786→   786→At minimum, by the end of the production program the AI team must deliver:
+   787→   787→   787→
+   788→   788→   788→## Software and environments
+   789→   789→   789→- Pilot-ready production application
+   790→   790→   790→- Full five-country rollout release
+   791→   791→   791→- CI/CD pipeline
+   792→   792→   792→- Monitoring and audit framework
+   793→   793→   793→- Controlled integration with Salesforce
+   794→   794→   794→- Controlled benchmarking feed
+   795→   795→   795→
+   796→   796→   796→## Documentation
+   797→   797→   797→- Final BRD / PRD / SRS / FRS / NFR set
+   798→   798→   798→- Architecture pack
+   799→   799→   799→- API and integration pack
+   800→   800→   800→- Data migration pack
+   801→   801→   801→- Test evidence pack
+   802→   802→   802→- UAT sign-off pack
+   803→   803→   803→- Training and change management pack
+   804→   804→   804→- Admin handover pack
+   805→   805→   805→- Release notes for every sprint/release
+   806→   806→   806→- Warranty and support pack
+   807→   807→   807→- Month-12 review readiness pack
+   808→   808→   808→
+   809→   809→   809→## Operational evidence
+   810→   810→   810→- Baseline vs pilot reconciliation evidence
+   811→   811→   811→- Usage metrics evidence
+   812→   812→   812→- Rollout readiness evidence
+   813→   813→   813→- Audit log evidence
+   814→   814→   814→- Security review evidence
+   815→   815→   815→- Migration reconciliation evidence
+   816→   816→   816→
+   817→   817→   817→---
+   818→   818→   818→
+   819→   819→   819→# 14. Executive build summary
+   820→   820→   820→
+   821→   821→   821→This program is successful only if the AI agents build a platform that is not just feature-complete but operationally governable: field-usable, reviewable, auditable, low-bandwidth-tolerant, migration-safe, and aligned to Salesforce-led data control. The team must treat documentation, testing, release evidence, and admin handover as first-class outputs equal to application code.
+   822→   822→   822→
