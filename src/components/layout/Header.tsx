@@ -14,9 +14,18 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useAppStore } from '@/store/useAppStore'
 import { VIEW_LABELS } from '@/lib/types'
+import { getLabel } from '@/lib/utils'
 
-export function Header() {
-  const { currentView, toggleSidebar } = useAppStore()
+interface HeaderProps {
+  onLogout: () => void
+}
+
+export function Header({ onLogout }: HeaderProps) {
+  const { currentView, toggleSidebar, user } = useAppStore()
+
+  const initials = user?.name
+    ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    : 'AU'
 
   return (
     <header className="sticky top-0 z-40 flex h-14 items-center gap-4 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -63,18 +72,21 @@ export function Header() {
             aria-label="User menu"
           >
             <Avatar size="sm">
-              <AvatarImage src="" alt="Admin User" />
+              <AvatarImage src="" alt={user?.name ?? 'User'} />
               <AvatarFallback className="text-xs font-medium bg-primary/10 text-primary">
-                AU
+                {initials}
               </AvatarFallback>
             </Avatar>
-            <span className="hidden md:inline text-sm font-medium">Admin User</span>
+            <span className="hidden md:inline text-sm font-medium">{user?.name ?? 'User'}</span>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>
               <div className="flex flex-col gap-0.5">
-                <span className="font-medium">Admin User</span>
-                <span className="text-xs text-muted-foreground">admin@aceli.org</span>
+                <span className="font-medium">{user?.name ?? 'User'}</span>
+                <span className="text-xs text-muted-foreground">{user?.email ?? ''}</span>
+                {user?.role && (
+                  <span className="text-xs text-primary font-medium">{getLabel(user.role)}</span>
+                )}
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
@@ -89,7 +101,10 @@ export function Header() {
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="cursor-pointer text-destructive focus:text-destructive">
+            <DropdownMenuItem
+              className="cursor-pointer text-destructive focus:text-destructive"
+              onSelect={onLogout}
+            >
               <LogOut className="size-4" />
               Log out
             </DropdownMenuItem>
