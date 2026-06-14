@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   BarChart3,
   ChevronRight,
@@ -8,11 +8,33 @@ import {
   Loader2,
   Award,
   TrendingUp,
+  Plus,
+  Pencil,
+  Trash2,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress, ProgressTrack, ProgressIndicator, ProgressLabel, ProgressValue } from '@/components/ui/progress'
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 interface Scorecard {
   id: string
@@ -33,6 +55,12 @@ interface Scorecard {
     name: string
     country: string
   }
+}
+
+interface Lender {
+  id: string
+  name: string
+  country: string
 }
 
 const DIMENSIONS = [
@@ -58,32 +86,136 @@ function scoreBadgeVariant(score: number): 'default' | 'secondary' | 'destructiv
   return 'destructive'
 }
 
+const defaultForm = {
+  lenderId: '',
+  period: '',
+  lendingVolume: '0',
+  termsAlignment: '0',
+  productFit: '0',
+  pipelineStrength: '0',
+  constraintResolution: '0',
+  relationshipHealth: '0',
+}
+
 export function ScorecardView() {
   const [scorecards, setScorecards] = useState<Scorecard[]>([])
+  const [lenders, setLenders] = useState<Lender[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editingItem, setEditingItem] = useState<Scorecard | null>(null)
+  const [form, setForm] = useState(defaultForm)
+  const [submitting, setSubmitting] = useState(false)
+
+  const fetchData = useCallback(() => {
+    fetch('/api/scorecards')
+      .then((r) => r.json())
+      .then((d) => {
+        setScorecards(Array.isArray(d) ? d : d.items ?? [])
+      })
+      .catch(() => { /* ignore */ })
+      .finally(() => setLoading(false))
+  }, [])
 
   useEffect(() => {
-    let cancelled = false
-    async function load() {
-      try {
-        const res = await fetch('/api/scorecards')
-        if (res.ok && !cancelled) {
-          const data = await res.json()
-          setScorecards(Array.isArray(data) ? data : data.items ?? [])
-        }
-      } catch {
-        // ignore
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-    load()
-    return () => { cancelled = true }
-  }, [])
+    fetchData()
+    // Fetch lenders for the select dropdown
+    fetch('/api/lenders')
+      .then((r) => r.json())
+      .then((d) => { if (Array.isArray(d)) setLenders(d) })
+      .catch(() => { /* ignore */ })
+  }, [fetchData])
 
   function toggleExpand(id: string) {
     setExpandedId((prev) => (prev === id ? null : id))
+  }
+
+  function openEdit(sc: Scorecard) {
+    setEditingItem(sc)
+    setForm({
+      lenderId: sc.lenderId,
+      period: sc.period,
+      lendingVolume: String(sc.lendingVolume),
+      termsAlignment: String(sc.termsAlignment),
+      productFit: String(sc.productFit),
+      pipelineStrength: String(sc.pipelineStrength),
+      constraintResolution: String(sc.constraintResolution),
+      relationshipHealth: String(sc.relationshipHealth),
+    })
+    setEditOpen(true)
+  }
+
+  async function handleCreate() {
+    setSubmitting(true)
+    try {
+      const dims = {
+        lendingVolume: parseFloat(form.lendingVolume) || 0,
+        termsAlignment: parseFloat(form.termsAlignment) || 0,
+        productFit: parseFloat(form.productFit) || 0,
+        pipelineStrength: parseFloat(form.pipelineStrength) || 0,
+        constraintResolution: parseFloat(form.constraintResolution) || 0,
+        relationshipHealth: parseFloat(form.relationshipHealth) || 0,
+      }
+      const overallScore = (dims.lendingVolume + dims.termsAlignment + dims.productFit + dims.pipelineStrength + dims.constraintResolution + dims.relationshipHealth) / 6
+      const res = await fetch('/api/scorecards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lenderId: form.lenderId,
+          period: form.period,
+          ...dims,
+          overallScore,
+        }),
+      })
+      if (res.ok) {
+        setCreateOpen(false)
+        fetchData()
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleEdit() {
+    if (!editingItem) return
+    setSubmitting(true)
+    try {
+      const dims = {
+        lendingVolume: parseFloat(form.lendingVolume) || 0,
+        termsAlignment: parseFloat(form.termsAlignment) || 0,
+        productFit: parseFloat(form.productFit) || 0,
+        pipelineStrength: parseFloat(form.pipelineStrength) || 0,
+        constraintResolution: parseFloat(form.constraintResolution) || 0,
+        relationshipHealth: parseFloat(form.relationshipHealth) || 0,
+      }
+      const overallScore = (dims.lendingVolume + dims.termsAlignment + dims.productFit + dims.pipelineStrength + dims.constraintResolution + dims.relationshipHealth) / 6
+      const res = await fetch(`/api/scorecards/${editingItem.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lenderId: form.lenderId,
+          period: form.period,
+          ...dims,
+          overallScore,
+        }),
+      })
+      if (res.ok) {
+        setEditOpen(false)
+        setEditingItem(null)
+        fetchData()
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm('Delete this scorecard?')) return
+    try {
+      const res = await fetch(`/api/scorecards/${id}`, { method: 'DELETE' })
+      if (res.ok) fetchData()
+    } catch { /* ignore */ }
   }
 
   if (loading) {
@@ -98,14 +230,75 @@ export function ScorecardView() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <BarChart3 className="size-5 text-primary" />
-        <div>
-          <h2 className="text-lg font-semibold">Scorecards</h2>
-          <p className="text-sm text-muted-foreground">
-            {scorecards.length} scorecard{scorecards.length !== 1 ? 's' : ''} across lenders
-          </p>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <BarChart3 className="size-5 text-primary" />
+          <div>
+            <h2 className="text-lg font-semibold">Scorecards</h2>
+            <p className="text-sm text-muted-foreground">
+              {scorecards.length} scorecard{scorecards.length !== 1 ? 's' : ''} across lenders
+            </p>
+          </div>
         </div>
+        <Dialog open={createOpen} onOpenChange={(open) => { if (open) setForm(defaultForm); setCreateOpen(open) }}>
+          <DialogTrigger render={<Button size="sm"><Plus className="size-4 mr-1" />Create Scorecard</Button>} />
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Create Scorecard</DialogTitle>
+              <DialogDescription>Add a new lender scorecard.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-3">
+              <div className="grid gap-1.5">
+                <Label>Lender</Label>
+                <Select value={form.lenderId} onValueChange={(v) => setForm({ ...form, lenderId: v ?? '' })}>
+                  <SelectTrigger><SelectValue placeholder="Select lender" /></SelectTrigger>
+                  <SelectContent>
+                    {lenders.map((l) => (
+                      <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="sc-period">Period</Label>
+                <Input id="sc-period" value={form.period} onChange={(e) => setForm({ ...form, period: e.target.value })} placeholder="e.g. Q1-2025" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="sc-lv">Lending Volume</Label>
+                  <Input id="sc-lv" type="number" value={form.lendingVolume} onChange={(e) => setForm({ ...form, lendingVolume: e.target.value })} />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="sc-ta">Terms Alignment</Label>
+                  <Input id="sc-ta" type="number" value={form.termsAlignment} onChange={(e) => setForm({ ...form, termsAlignment: e.target.value })} />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="sc-pf">Product Fit</Label>
+                  <Input id="sc-pf" type="number" value={form.productFit} onChange={(e) => setForm({ ...form, productFit: e.target.value })} />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="sc-ps">Pipeline Strength</Label>
+                  <Input id="sc-ps" type="number" value={form.pipelineStrength} onChange={(e) => setForm({ ...form, pipelineStrength: e.target.value })} />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="sc-cr">Constraint Resolution</Label>
+                  <Input id="sc-cr" type="number" value={form.constraintResolution} onChange={(e) => setForm({ ...form, constraintResolution: e.target.value })} />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="sc-rh">Relationship Health</Label>
+                  <Input id="sc-rh" type="number" value={form.relationshipHealth} onChange={(e) => setForm({ ...form, relationshipHealth: e.target.value })} />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose render={<Button variant="outline">Cancel</Button>} />
+              <Button onClick={handleCreate} disabled={submitting || !form.lenderId || !form.period}>
+                {submitting && <Loader2 className="size-4 animate-spin mr-1" />}
+                Create
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {scorecards.length === 0 ? (
@@ -157,6 +350,12 @@ export function ScorecardView() {
                       <Badge variant={scoreBadgeVariant(sc.overallScore)}>
                         {sc.overallScore >= 80 ? 'Strong' : sc.overallScore >= 60 ? 'Moderate' : 'Needs Attention'}
                       </Badge>
+                      <Button variant="ghost" size="icon-sm" onClick={(e) => { e.stopPropagation(); openEdit(sc) }}>
+                        <Pencil className="size-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon-sm" onClick={(e) => { e.stopPropagation(); handleDelete(sc.id) }}>
+                        <Trash2 className="size-3.5 text-destructive" />
+                      </Button>
                     </div>
                   </div>
                 </CardHeader>
@@ -205,6 +404,66 @@ export function ScorecardView() {
           })}
         </div>
       )}
+
+      {/* Edit Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Scorecard</DialogTitle>
+            <DialogDescription>Update the scorecard details.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div className="grid gap-1.5">
+              <Label>Lender</Label>
+              <Select value={form.lenderId} onValueChange={(v) => setForm({ ...form, lenderId: v ?? '' })}>
+                <SelectTrigger><SelectValue placeholder="Select lender" /></SelectTrigger>
+                <SelectContent>
+                  {lenders.map((l) => (
+                    <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="sc-edit-period">Period</Label>
+              <Input id="sc-edit-period" value={form.period} onChange={(e) => setForm({ ...form, period: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="sc-edit-lv">Lending Volume</Label>
+                <Input id="sc-edit-lv" type="number" value={form.lendingVolume} onChange={(e) => setForm({ ...form, lendingVolume: e.target.value })} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="sc-edit-ta">Terms Alignment</Label>
+                <Input id="sc-edit-ta" type="number" value={form.termsAlignment} onChange={(e) => setForm({ ...form, termsAlignment: e.target.value })} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="sc-edit-pf">Product Fit</Label>
+                <Input id="sc-edit-pf" type="number" value={form.productFit} onChange={(e) => setForm({ ...form, productFit: e.target.value })} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="sc-edit-ps">Pipeline Strength</Label>
+                <Input id="sc-edit-ps" type="number" value={form.pipelineStrength} onChange={(e) => setForm({ ...form, pipelineStrength: e.target.value })} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="sc-edit-cr">Constraint Resolution</Label>
+                <Input id="sc-edit-cr" type="number" value={form.constraintResolution} onChange={(e) => setForm({ ...form, constraintResolution: e.target.value })} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="sc-edit-rh">Relationship Health</Label>
+                <Input id="sc-edit-rh" type="number" value={form.relationshipHealth} onChange={(e) => setForm({ ...form, relationshipHealth: e.target.value })} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline">Cancel</Button>} />
+            <Button onClick={handleEdit} disabled={submitting || !form.lenderId || !form.period}>
+              {submitting && <Loader2 className="size-4 animate-spin mr-1" />}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

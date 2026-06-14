@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Target, TrendingUp, TrendingDown, Minus, ArrowRight } from 'lucide-react'
+import { useEffect, useState, useCallback } from 'react'
+import { Target, TrendingUp, TrendingDown, Minus, ArrowRight, Plus, Pencil, Trash2, Loader2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress, ProgressIndicator, ProgressTrack } from '@/components/ui/progress'
@@ -12,6 +12,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 
 interface OutcomeKPI {
   id: string
@@ -52,13 +66,38 @@ const CATEGORY_COLORS: Record<string, string> = {
   impact: 'bg-pink-500',
 }
 
+const CATEGORIES = [
+  { value: 'activation', label: 'Activation' },
+  { value: 'adoption', label: 'Adoption' },
+  { value: 'efficiency', label: 'Efficiency' },
+  { value: 'quality', label: 'Quality' },
+  { value: 'impact', label: 'Impact' },
+]
+
+const defaultForm = {
+  name: '',
+  description: '',
+  category: 'activation',
+  measurementUnit: '',
+  baseline: '',
+  target: '',
+  actual: '',
+  period: '',
+  country: '',
+}
+
 export function OutcomeKPIView() {
   const [data, setData] = useState<OutcomeKPI[]>([])
   const [loading, setLoading] = useState(true)
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [createOpen, setCreateOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editingItem, setEditingItem] = useState<OutcomeKPI | null>(null)
+  const [form, setForm] = useState(defaultForm)
+  const [submitting, setSubmitting] = useState(false)
 
-  useEffect(() => {
+  const fetchData = useCallback(() => {
     const params = new URLSearchParams()
     if (categoryFilter !== 'all') params.set('category', categoryFilter)
     if (statusFilter !== 'all') params.set('status', statusFilter)
@@ -68,6 +107,8 @@ export function OutcomeKPIView() {
       .catch(() => setData([]))
       .finally(() => setLoading(false))
   }, [categoryFilter, statusFilter])
+
+  useEffect(() => { fetchData() }, [fetchData])
 
   // Group by category
   const grouped = data.reduce<Record<string, OutcomeKPI[]>>((acc, kpi) => {
@@ -88,6 +129,86 @@ export function OutcomeKPIView() {
     if (kpi.actual > kpi.baseline) return <TrendingUp className="size-3 text-emerald-600" />
     if (kpi.actual < kpi.baseline) return <TrendingDown className="size-3 text-red-600" />
     return <Minus className="size-3 text-muted-foreground" />
+  }
+
+  function openEdit(kpi: OutcomeKPI) {
+    setEditingItem(kpi)
+    setForm({
+      name: kpi.name,
+      description: kpi.description,
+      category: kpi.category,
+      measurementUnit: kpi.measurementUnit,
+      baseline: kpi.baseline != null ? String(kpi.baseline) : '',
+      target: kpi.target != null ? String(kpi.target) : '',
+      actual: kpi.actual != null ? String(kpi.actual) : '',
+      period: kpi.period,
+      country: kpi.country ?? '',
+    })
+    setEditOpen(true)
+  }
+
+  async function handleCreate() {
+    setSubmitting(true)
+    try {
+      const res = await fetch('/api/outcome-kpis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          description: form.description,
+          category: form.category,
+          measurementUnit: form.measurementUnit,
+          baseline: form.baseline !== '' ? parseFloat(form.baseline) : null,
+          target: form.target !== '' ? parseFloat(form.target) : null,
+          actual: form.actual !== '' ? parseFloat(form.actual) : null,
+          period: form.period,
+          country: form.country || null,
+        }),
+      })
+      if (res.ok) {
+        setCreateOpen(false)
+        fetchData()
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleEdit() {
+    if (!editingItem) return
+    setSubmitting(true)
+    try {
+      const res = await fetch(`/api/outcome-kpis/${editingItem.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          description: form.description,
+          category: form.category,
+          measurementUnit: form.measurementUnit,
+          baseline: form.baseline !== '' ? parseFloat(form.baseline) : null,
+          target: form.target !== '' ? parseFloat(form.target) : null,
+          actual: form.actual !== '' ? parseFloat(form.actual) : null,
+          period: form.period,
+          country: form.country || null,
+        }),
+      })
+      if (res.ok) {
+        setEditOpen(false)
+        setEditingItem(null)
+        fetchData()
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm('Delete this outcome KPI?')) return
+    try {
+      const res = await fetch(`/api/outcome-kpis/${id}`, { method: 'DELETE' })
+      if (res.ok) fetchData()
+    } catch { /* ignore */ }
   }
 
   if (loading) {
@@ -150,6 +271,73 @@ export function OutcomeKPIView() {
               <SelectItem value="missed">Missed</SelectItem>
             </SelectContent>
           </Select>
+          <Dialog open={createOpen} onOpenChange={(open) => { if (open) setForm(defaultForm); setCreateOpen(open) }}>
+            <DialogTrigger render={<Button size="sm"><Plus className="size-4 mr-1" />Create KPI</Button>} />
+            <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Create Outcome KPI</DialogTitle>
+                <DialogDescription>Add a new outcome KPI.</DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-3">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="ok-name">Name</Label>
+                  <Input id="ok-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="KPI name" />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="ok-desc">Description</Label>
+                  <Textarea id="ok-desc" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Description" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-1.5">
+                    <Label>Category</Label>
+                    <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v ?? 'activation' })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {CATEGORIES.map((c) => (
+                          <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="ok-unit">Measurement Unit</Label>
+                    <Input id="ok-unit" value={form.measurementUnit} onChange={(e) => setForm({ ...form, measurementUnit: e.target.value })} placeholder="e.g. %" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="ok-baseline">Baseline</Label>
+                    <Input id="ok-baseline" type="number" step="any" value={form.baseline} onChange={(e) => setForm({ ...form, baseline: e.target.value })} />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="ok-target">Target</Label>
+                    <Input id="ok-target" type="number" step="any" value={form.target} onChange={(e) => setForm({ ...form, target: e.target.value })} />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="ok-actual">Actual</Label>
+                    <Input id="ok-actual" type="number" step="any" value={form.actual} onChange={(e) => setForm({ ...form, actual: e.target.value })} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="ok-period">Period</Label>
+                    <Input id="ok-period" value={form.period} onChange={(e) => setForm({ ...form, period: e.target.value })} placeholder="e.g. Q1-2025" />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="ok-country">Country</Label>
+                    <Input id="ok-country" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} placeholder="e.g. Kenya" />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <DialogClose render={<Button variant="outline">Cancel</Button>} />
+                <Button onClick={handleCreate} disabled={submitting || !form.name}>
+                  {submitting && <Loader2 className="size-4 animate-spin mr-1" />}
+                  Create
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -179,7 +367,15 @@ export function OutcomeKPIView() {
                       <CardHeader>
                         <div className="flex items-start justify-between gap-2">
                           <CardTitle className="text-sm leading-tight">{kpi.name}</CardTitle>
-                          <Badge className={badge.className}>{badge.label}</Badge>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Badge className={badge.className}>{badge.label}</Badge>
+                            <Button variant="ghost" size="icon-sm" onClick={() => openEdit(kpi)}>
+                              <Pencil className="size-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(kpi.id)}>
+                              <Trash2 className="size-3.5 text-destructive" />
+                            </Button>
+                          </div>
                         </div>
                         <CardDescription className="line-clamp-2 text-xs">{kpi.description}</CardDescription>
                       </CardHeader>
@@ -247,6 +443,74 @@ export function OutcomeKPIView() {
           ))}
         </div>
       )}
+
+      {/* Edit Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Outcome KPI</DialogTitle>
+            <DialogDescription>Update the outcome KPI details.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="ok-edit-name">Name</Label>
+              <Input id="ok-edit-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="ok-edit-desc">Description</Label>
+              <Textarea id="ok-edit-desc" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label>Category</Label>
+                <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v ?? 'activation' })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIES.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="ok-edit-unit">Measurement Unit</Label>
+                <Input id="ok-edit-unit" value={form.measurementUnit} onChange={(e) => setForm({ ...form, measurementUnit: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="ok-edit-baseline">Baseline</Label>
+                <Input id="ok-edit-baseline" type="number" step="any" value={form.baseline} onChange={(e) => setForm({ ...form, baseline: e.target.value })} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="ok-edit-target">Target</Label>
+                <Input id="ok-edit-target" type="number" step="any" value={form.target} onChange={(e) => setForm({ ...form, target: e.target.value })} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="ok-edit-actual">Actual</Label>
+                <Input id="ok-edit-actual" type="number" step="any" value={form.actual} onChange={(e) => setForm({ ...form, actual: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="ok-edit-period">Period</Label>
+                <Input id="ok-edit-period" value={form.period} onChange={(e) => setForm({ ...form, period: e.target.value })} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="ok-edit-country">Country</Label>
+                <Input id="ok-edit-country" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline">Cancel</Button>} />
+            <Button onClick={handleEdit} disabled={submitting || !form.name}>
+              {submitting && <Loader2 className="size-4 animate-spin mr-1" />}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

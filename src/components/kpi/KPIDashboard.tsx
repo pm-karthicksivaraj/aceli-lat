@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Target, TrendingUp, BarChart3, Filter } from 'lucide-react'
+import { useEffect, useState, useCallback } from 'react'
+import { Target, TrendingUp, BarChart3, Filter, Plus, Pencil, Trash2, Loader2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,18 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Progress, ProgressTrack, ProgressIndicator, ProgressLabel, ProgressValue } from '@/components/ui/progress'
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 interface KPIData {
   id: string
@@ -27,14 +39,30 @@ interface KPIData {
   lender?: { id: string; name: string } | null
 }
 
+const defaultForm = {
+  kpiName: '',
+  country: '',
+  period: '',
+  baseline: '',
+  actual: '',
+  target: '',
+  unit: '',
+  source: '',
+}
+
 export function KPIDashboard() {
   const [data, setData] = useState<KPIData[]>([])
   const [loading, setLoading] = useState(true)
   const [filterKpiName, setFilterKpiName] = useState('all')
   const [filterCountry, setFilterCountry] = useState('all')
   const [filterPeriod, setFilterPeriod] = useState('all')
+  const [createOpen, setCreateOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editingItem, setEditingItem] = useState<KPIData | null>(null)
+  const [form, setForm] = useState(defaultForm)
+  const [submitting, setSubmitting] = useState(false)
 
-  useEffect(() => {
+  const fetchData = useCallback(() => {
     const params = new URLSearchParams()
     if (filterKpiName !== 'all') params.set('kpiName', filterKpiName)
     if (filterCountry !== 'all') params.set('country', filterCountry)
@@ -46,6 +74,8 @@ export function KPIDashboard() {
       .catch(() => { /* ignore */ })
       .finally(() => setLoading(false))
   }, [filterKpiName, filterCountry, filterPeriod])
+
+  useEffect(() => { fetchData() }, [fetchData])
 
   const kpiNames = [...new Set(data.map((d) => d.kpiName))]
   const countries = [...new Set(data.map((d) => d.country))]
@@ -67,9 +97,86 @@ export function KPIDashboard() {
     return <Badge variant="destructive">Below Target</Badge>
   }
 
+  function openEdit(item: KPIData) {
+    setEditingItem(item)
+    setForm({
+      kpiName: item.kpiName,
+      country: item.country,
+      period: item.period,
+      baseline: item.baseline != null ? String(item.baseline) : '',
+      actual: item.actual != null ? String(item.actual) : '',
+      target: item.target != null ? String(item.target) : '',
+      unit: item.unit,
+      source: item.source,
+    })
+    setEditOpen(true)
+  }
+
+  async function handleCreate() {
+    setSubmitting(true)
+    try {
+      const res = await fetch('/api/kpis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kpiName: form.kpiName,
+          country: form.country,
+          period: form.period,
+          baseline: form.baseline !== '' ? parseFloat(form.baseline) : null,
+          actual: form.actual !== '' ? parseFloat(form.actual) : null,
+          target: form.target !== '' ? parseFloat(form.target) : null,
+          unit: form.unit,
+          source: form.source || 'system',
+        }),
+      })
+      if (res.ok) {
+        setCreateOpen(false)
+        fetchData()
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleEdit() {
+    if (!editingItem) return
+    setSubmitting(true)
+    try {
+      const res = await fetch(`/api/kpis/${editingItem.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kpiName: form.kpiName,
+          country: form.country,
+          period: form.period,
+          baseline: form.baseline !== '' ? parseFloat(form.baseline) : null,
+          actual: form.actual !== '' ? parseFloat(form.actual) : null,
+          target: form.target !== '' ? parseFloat(form.target) : null,
+          unit: form.unit,
+          source: form.source,
+        }),
+      })
+      if (res.ok) {
+        setEditOpen(false)
+        setEditingItem(null)
+        fetchData()
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm('Delete this KPI?')) return
+    try {
+      const res = await fetch(`/api/kpis/${id}`, { method: 'DELETE' })
+      if (res.ok) fetchData()
+    } catch { /* ignore */ }
+  }
+
   return (
     <div className="space-y-6">
-      {/* Filters */}
+      {/* Filters & Create */}
       <div className="flex flex-wrap items-center gap-3">
         <Filter className="size-4 text-muted-foreground" />
         <Select value={filterKpiName} onValueChange={(v) => setFilterKpiName(v ?? 'all')}>
@@ -118,6 +225,64 @@ export function KPIDashboard() {
             Clear Filters
           </Button>
         )}
+        <div className="ml-auto">
+          <Dialog open={createOpen} onOpenChange={(open) => { if (open) setForm(defaultForm); setCreateOpen(open) }}>
+            <DialogTrigger render={<Button size="sm"><Plus className="size-4 mr-1" />Create KPI</Button>} />
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Create KPI</DialogTitle>
+                <DialogDescription>Add a new KPI measurement.</DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-3">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="kpi-name">KPI Name</Label>
+                  <Input id="kpi-name" value={form.kpiName} onChange={(e) => setForm({ ...form, kpiName: e.target.value })} placeholder="e.g. Lending Volume Growth" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="kpi-country">Country</Label>
+                    <Input id="kpi-country" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} placeholder="e.g. Kenya" />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="kpi-period">Period</Label>
+                    <Input id="kpi-period" value={form.period} onChange={(e) => setForm({ ...form, period: e.target.value })} placeholder="e.g. Q1-2025" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="kpi-baseline">Baseline</Label>
+                    <Input id="kpi-baseline" type="number" step="any" value={form.baseline} onChange={(e) => setForm({ ...form, baseline: e.target.value })} />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="kpi-actual">Actual</Label>
+                    <Input id="kpi-actual" type="number" step="any" value={form.actual} onChange={(e) => setForm({ ...form, actual: e.target.value })} />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="kpi-target">Target</Label>
+                    <Input id="kpi-target" type="number" step="any" value={form.target} onChange={(e) => setForm({ ...form, target: e.target.value })} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="kpi-unit">Unit</Label>
+                    <Input id="kpi-unit" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="e.g. %" />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="kpi-source">Source</Label>
+                    <Input id="kpi-source" value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} placeholder="e.g. Salesforce" />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <DialogClose render={<Button variant="outline">Cancel</Button>} />
+                <Button onClick={handleCreate} disabled={submitting || !form.kpiName || !form.country || !form.period}>
+                  {submitting && <Loader2 className="size-4 animate-spin mr-1" />}
+                  Create
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -174,7 +339,15 @@ export function KPIDashboard() {
               <CardHeader>
                 <div className="flex items-start justify-between gap-2">
                   <CardTitle className="text-sm">{item.kpiName}</CardTitle>
-                  {getStatusBadge(item)}
+                  <div className="flex items-center gap-1 shrink-0">
+                    {getStatusBadge(item)}
+                    <Button variant="ghost" size="icon-sm" onClick={() => openEdit(item)}>
+                      <Pencil className="size-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(item.id)}>
+                      <Trash2 className="size-3.5 text-destructive" />
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -238,6 +411,63 @@ export function KPIDashboard() {
           ))}
         </div>
       )}
+
+      {/* Edit Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit KPI</DialogTitle>
+            <DialogDescription>Update the KPI measurement details.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="kpi-edit-name">KPI Name</Label>
+              <Input id="kpi-edit-name" value={form.kpiName} onChange={(e) => setForm({ ...form, kpiName: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="kpi-edit-country">Country</Label>
+                <Input id="kpi-edit-country" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="kpi-edit-period">Period</Label>
+                <Input id="kpi-edit-period" value={form.period} onChange={(e) => setForm({ ...form, period: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="kpi-edit-baseline">Baseline</Label>
+                <Input id="kpi-edit-baseline" type="number" step="any" value={form.baseline} onChange={(e) => setForm({ ...form, baseline: e.target.value })} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="kpi-edit-actual">Actual</Label>
+                <Input id="kpi-edit-actual" type="number" step="any" value={form.actual} onChange={(e) => setForm({ ...form, actual: e.target.value })} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="kpi-edit-target">Target</Label>
+                <Input id="kpi-edit-target" type="number" step="any" value={form.target} onChange={(e) => setForm({ ...form, target: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="kpi-edit-unit">Unit</Label>
+                <Input id="kpi-edit-unit" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="kpi-edit-source">Source</Label>
+                <Input id="kpi-edit-source" value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline">Cancel</Button>} />
+            <Button onClick={handleEdit} disabled={submitting || !form.kpiName}>
+              {submitting && <Loader2 className="size-4 animate-spin mr-1" />}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

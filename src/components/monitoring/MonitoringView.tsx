@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { AlertTriangle, Bell, CheckCircle2, Eye, Filter } from 'lucide-react'
+import { useEffect, useState, useCallback } from 'react'
+import { AlertTriangle, Bell, CheckCircle2, Eye, Filter, Plus, Loader2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -12,6 +12,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 
 interface MonitoringAlert {
   id: string
@@ -38,6 +51,28 @@ const alertTypes = ['sync_failure', 'performance', 'security', 'availability', '
 const severities = ['critical', 'warning', 'info']
 const alertStatuses = ['active', 'acknowledged', 'resolved']
 
+const ALERT_TYPE_OPTIONS = [
+  { value: 'sync_failure', label: 'Sync Failure' },
+  { value: 'performance', label: 'Performance' },
+  { value: 'security', label: 'Security' },
+  { value: 'availability', label: 'Availability' },
+  { value: 'data_quality', label: 'Data Quality' },
+]
+
+const SEVERITY_OPTIONS = [
+  { value: 'critical', label: 'Critical' },
+  { value: 'warning', label: 'Warning' },
+  { value: 'info', label: 'Info' },
+]
+
+const defaultForm = {
+  type: 'sync_failure',
+  severity: 'warning',
+  message: '',
+  entity: '',
+  country: '',
+}
+
 export function MonitoringView() {
   const [data, setData] = useState<MonitoringAlert[]>([])
   const [loading, setLoading] = useState(true)
@@ -45,8 +80,11 @@ export function MonitoringView() {
   const [filterSeverity, setFilterSeverity] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [form, setForm] = useState(defaultForm)
+  const [submitting, setSubmitting] = useState(false)
 
-  useEffect(() => {
+  const fetchData = useCallback(() => {
     const params = new URLSearchParams()
     if (filterType !== 'all') params.set('type', filterType)
     if (filterSeverity !== 'all') params.set('severity', filterSeverity)
@@ -59,6 +97,8 @@ export function MonitoringView() {
       .finally(() => setLoading(false))
   }, [filterType, filterSeverity, filterStatus])
 
+  useEffect(() => { fetchData() }, [fetchData])
+
   async function handleAction(id: string, action: 'acknowledge' | 'resolve') {
     setActionLoading(id)
     try {
@@ -68,20 +108,36 @@ export function MonitoringView() {
         body: JSON.stringify({ action }),
       })
       if (res.ok) {
-        // Re-fetch
-        const params = new URLSearchParams()
-        if (filterType !== 'all') params.set('type', filterType)
-        if (filterSeverity !== 'all') params.set('severity', filterSeverity)
-        if (filterStatus !== 'all') params.set('status', filterStatus)
-        fetch(`/api/monitoring-alerts?${params.toString()}`)
-          .then((r) => r.json())
-          .then((d) => { if (Array.isArray(d)) setData(d) })
-          .catch(() => { /* ignore */ })
+        fetchData()
       }
     } catch {
       // ignore
     } finally {
       setActionLoading(null)
+    }
+  }
+
+  async function handleCreate() {
+    setSubmitting(true)
+    try {
+      const res = await fetch('/api/monitoring-alerts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: form.type,
+          severity: form.severity,
+          message: form.message,
+          entity: form.entity || null,
+          country: form.country || null,
+        }),
+      })
+      if (res.ok) {
+        setCreateOpen(false)
+        setForm(defaultForm)
+        fetchData()
+      }
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -125,7 +181,7 @@ export function MonitoringView() {
         </Card>
       </div>
 
-      {/* Filters */}
+      {/* Filters & Create */}
       <div className="flex flex-wrap items-center gap-3">
         <Filter className="size-4 text-muted-foreground" />
         <Select value={filterType} onValueChange={(v) => setFilterType(v ?? 'all')}>
@@ -174,6 +230,62 @@ export function MonitoringView() {
             Clear Filters
           </Button>
         )}
+        <div className="ml-auto">
+          <Dialog open={createOpen} onOpenChange={(open) => { if (open) setForm(defaultForm); setCreateOpen(open) }}>
+            <DialogTrigger render={<Button size="sm"><Plus className="size-4 mr-1" />Create Alert</Button>} />
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Create Monitoring Alert</DialogTitle>
+                <DialogDescription>Manually create a new monitoring alert.</DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-3">
+                <div className="grid gap-1.5">
+                  <Label>Type</Label>
+                  <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v ?? 'sync_failure' })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {ALERT_TYPE_OPTIONS.map((t) => (
+                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label>Severity</Label>
+                  <Select value={form.severity} onValueChange={(v) => setForm({ ...form, severity: v ?? 'warning' })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {SEVERITY_OPTIONS.map((s) => (
+                        <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="ma-message">Message</Label>
+                  <Textarea id="ma-message" value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} placeholder="Alert message" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="ma-entity">Entity</Label>
+                    <Input id="ma-entity" value={form.entity} onChange={(e) => setForm({ ...form, entity: e.target.value })} placeholder="e.g. Lender" />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="ma-country">Country</Label>
+                    <Input id="ma-country" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} placeholder="e.g. Kenya" />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <DialogClose render={<Button variant="outline">Cancel</Button>} />
+                <Button onClick={handleCreate} disabled={submitting || !form.message}>
+                  {submitting && <Loader2 className="size-4 animate-spin mr-1" />}
+                  Create
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Alert Cards */}

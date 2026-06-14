@@ -9,11 +9,15 @@ import {
   ChevronDown,
   ChevronUp,
   Globe,
+  Plus,
+  Pencil,
+  Trash2,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import {
   Select,
@@ -23,6 +27,16 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { useAppStore } from '@/store/useAppStore'
 
 interface Lender {
@@ -41,6 +55,28 @@ interface Lender {
   createdAt: string
 }
 
+interface LenderForm {
+  name: string
+  institutionType: string
+  country: string
+  region: string
+  contactPerson: string
+  contactEmail: string
+  portfolioSize: string
+  source: string
+}
+
+const EMPTY_FORM: LenderForm = {
+  name: '',
+  institutionType: 'bank',
+  country: 'Kenya',
+  region: '',
+  contactPerson: '',
+  contactEmail: '',
+  portfolioSize: '',
+  source: 'manual',
+}
+
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All Status' },
   { value: 'active', label: 'Active' },
@@ -57,6 +93,30 @@ const COUNTRY_OPTIONS = [
   { value: 'Ghana', label: 'Ghana' },
   { value: 'Ethiopia', label: 'Ethiopia' },
   { value: 'Rwanda', label: 'Rwanda' },
+]
+
+const INSTITUTION_TYPE_OPTIONS = [
+  { value: 'bank', label: 'Bank' },
+  { value: 'microfinance', label: 'Microfinance' },
+  { value: 'dfi', label: 'DFI' },
+  { value: 'cooperative', label: 'Cooperative' },
+  { value: 'nbfi', label: 'NBFI' },
+]
+
+const COUNTRY_FORM_OPTIONS = [
+  { value: 'Kenya', label: 'Kenya' },
+  { value: 'Uganda', label: 'Uganda' },
+  { value: 'Tanzania', label: 'Tanzania' },
+  { value: 'Nigeria', label: 'Nigeria' },
+  { value: 'Ghana', label: 'Ghana' },
+  { value: 'Ethiopia', label: 'Ethiopia' },
+  { value: 'Rwanda', label: 'Rwanda' },
+]
+
+const SOURCE_OPTIONS = [
+  { value: 'manual', label: 'Manual' },
+  { value: 'salesforce', label: 'Salesforce' },
+  { value: 'google_sheets', label: 'Google Sheets' },
 ]
 
 const statusBadgeVariant = (status: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
@@ -89,12 +149,136 @@ export function LenderList() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
+  // Create / Edit dialog state
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [editingLender, setEditingLender] = useState<Lender | null>(null)
+  const [form, setForm] = useState<LenderForm>(EMPTY_FORM)
+  const [submitting, setSubmitting] = useState(false)
+  const [formError, setFormError] = useState('')
+
+  // Delete confirmation dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deletingLender, setDeletingLender] = useState<Lender | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
+  const fetchLenders = () => {
+    setLoading(true)
+    fetch('/api/lenders')
+      .then((r) => r.json())
+      .then((d) => { if (Array.isArray(d)) setLenders(d) })
+      .finally(() => setLoading(false))
+  }
+
   useEffect(() => {
     fetch('/api/lenders')
       .then((r) => r.json())
       .then((d) => { if (Array.isArray(d)) setLenders(d) })
       .finally(() => setLoading(false))
   }, [])
+
+  // Open dialog for creating a new lender
+  const openCreateDialog = () => {
+    setEditingLender(null)
+    setForm(EMPTY_FORM)
+    setFormError('')
+    setDialogOpen(true)
+  }
+
+  // Open dialog for editing an existing lender
+  const openEditDialog = (lender: Lender) => {
+    setEditingLender(lender)
+    setForm({
+      name: lender.name,
+      institutionType: lender.institutionType,
+      country: lender.country,
+      region: lender.region ?? '',
+      contactPerson: lender.contactPerson ?? '',
+      contactEmail: lender.contactEmail ?? '',
+      portfolioSize: lender.portfolioSize != null ? String(lender.portfolioSize) : '',
+      source: lender.source,
+    })
+    setFormError('')
+    setDialogOpen(true)
+  }
+
+  // Submit handler for create/edit
+  const handleSubmit = async () => {
+    if (!form.name.trim()) {
+      setFormError('Name is required')
+      return
+    }
+
+    setSubmitting(true)
+    setFormError('')
+
+    const payload = {
+      name: form.name.trim(),
+      institutionType: form.institutionType,
+      country: form.country,
+      region: form.region.trim() || null,
+      contactPerson: form.contactPerson.trim() || null,
+      contactEmail: form.contactEmail.trim() || null,
+      portfolioSize: form.portfolioSize ? parseFloat(form.portfolioSize) : null,
+      source: form.source,
+    }
+
+    try {
+      if (editingLender) {
+        // Update existing lender
+        const res = await fetch(`/api/lenders/${editingLender.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        if (!res.ok) {
+          const data = await res.json()
+          throw new Error(data.error || 'Failed to update lender')
+        }
+      } else {
+        // Create new lender
+        const res = await fetch('/api/lenders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        if (!res.ok) {
+          const data = await res.json()
+          throw new Error(data.error || 'Failed to create lender')
+        }
+      }
+
+      setDialogOpen(false)
+      fetchLenders()
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Something went wrong')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  // Delete handler
+  const handleDelete = async () => {
+    if (!deletingLender) return
+
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/lenders/${deletingLender.id}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to delete lender')
+      }
+
+      setDeleteDialogOpen(false)
+      setDeletingLender(null)
+      fetchLenders()
+    } catch (err) {
+      console.error('Delete error:', err)
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   const filtered = lenders.filter((l) => {
     if (search && !l.name.toLowerCase().includes(search.toLowerCase())) return false
@@ -113,9 +297,170 @@ export function LenderList() {
             Manage lender relationships and activation status
           </p>
         </div>
-        <Badge variant="outline" className="w-fit">
-          {filtered.length} lender{filtered.length !== 1 ? 's' : ''}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger
+              render={
+                <Button size="sm">
+                  <Plus className="size-4 mr-1" />
+                  Add Lender
+                </Button>
+              }
+              onClick={openCreateDialog}
+            />
+
+            <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingLender ? 'Edit Lender' : 'Add Lender'}
+                </DialogTitle>
+                <DialogDescription>
+                  {editingLender
+                    ? 'Update lender details below.'
+                    : 'Fill in the details to create a new lender.'}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="grid gap-4 py-2">
+                {/* Name */}
+                <div className="grid gap-2">
+                  <Label htmlFor="lender-name">Name *</Label>
+                  <Input
+                    id="lender-name"
+                    placeholder="Lender name"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  />
+                </div>
+
+                {/* Institution Type */}
+                <div className="grid gap-2">
+                  <Label htmlFor="lender-type">Institution Type</Label>
+                  <Select
+                    value={form.institutionType}
+                    onValueChange={(v) => setForm({ ...form, institutionType: v ?? 'bank' })}
+                  >
+                    <SelectTrigger id="lender-type">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INSTITUTION_TYPE_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Country */}
+                <div className="grid gap-2">
+                  <Label htmlFor="lender-country">Country</Label>
+                  <Select
+                    value={form.country}
+                    onValueChange={(v) => setForm({ ...form, country: v ?? 'Kenya' })}
+                  >
+                    <SelectTrigger id="lender-country">
+                      <SelectValue placeholder="Select country" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COUNTRY_FORM_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Region */}
+                <div className="grid gap-2">
+                  <Label htmlFor="lender-region">Region</Label>
+                  <Input
+                    id="lender-region"
+                    placeholder="e.g. East Africa"
+                    value={form.region}
+                    onChange={(e) => setForm({ ...form, region: e.target.value })}
+                  />
+                </div>
+
+                {/* Contact Person */}
+                <div className="grid gap-2">
+                  <Label htmlFor="lender-contact">Contact Person</Label>
+                  <Input
+                    id="lender-contact"
+                    placeholder="Contact name"
+                    value={form.contactPerson}
+                    onChange={(e) => setForm({ ...form, contactPerson: e.target.value })}
+                  />
+                </div>
+
+                {/* Contact Email */}
+                <div className="grid gap-2">
+                  <Label htmlFor="lender-email">Contact Email</Label>
+                  <Input
+                    id="lender-email"
+                    type="email"
+                    placeholder="email@example.com"
+                    value={form.contactEmail}
+                    onChange={(e) => setForm({ ...form, contactEmail: e.target.value })}
+                  />
+                </div>
+
+                {/* Portfolio Size */}
+                <div className="grid gap-2">
+                  <Label htmlFor="lender-portfolio">Portfolio Size</Label>
+                  <Input
+                    id="lender-portfolio"
+                    type="number"
+                    placeholder="e.g. 5000000"
+                    value={form.portfolioSize}
+                    onChange={(e) => setForm({ ...form, portfolioSize: e.target.value })}
+                  />
+                </div>
+
+                {/* Source */}
+                <div className="grid gap-2">
+                  <Label htmlFor="lender-source">Source</Label>
+                  <Select
+                    value={form.source}
+                    onValueChange={(v) => setForm({ ...form, source: v ?? 'manual' })}
+                  >
+                    <SelectTrigger id="lender-source">
+                      <SelectValue placeholder="Select source" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SOURCE_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Error message */}
+                {formError && (
+                  <p className="text-sm text-destructive">{formError}</p>
+                )}
+              </div>
+
+              <DialogFooter>
+                <DialogClose render={<Button variant="outline" />}>
+                  Cancel
+                </DialogClose>
+                <Button onClick={handleSubmit} disabled={submitting}>
+                  {submitting && <Loader2 className="size-4 mr-1 animate-spin" />}
+                  {editingLender ? 'Save Changes' : 'Create Lender'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Badge variant="outline" className="w-fit">
+            {filtered.length} lender{filtered.length !== 1 ? 's' : ''}
+          </Badge>
+        </div>
       </div>
 
       {/* Filters */}
@@ -202,7 +547,32 @@ export function LenderList() {
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="h-7 w-7"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          openEditDialog(lender)
+                        }}
+                        aria-label={`Edit ${lender.name}`}
+                      >
+                        <Pencil className="size-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="h-7 w-7 text-destructive hover:text-destructive"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setDeletingLender(lender)
+                          setDeleteDialogOpen(true)
+                        }}
+                        aria-label={`Delete ${lender.name}`}
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
                       <Badge variant={statusBadgeVariant(lender.status)} className="text-[10px]">
                         {lender.status}
                       </Badge>
@@ -284,6 +654,31 @@ export function LenderList() {
           })}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Lender</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <strong>{deletingLender?.name}</strong>? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" />}>
+              Cancel
+            </DialogClose>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              {deleting && <Loader2 className="size-4 mr-1 animate-spin" />}
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

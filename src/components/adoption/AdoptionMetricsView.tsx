@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Users, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { useEffect, useState, useCallback } from 'react'
+import { Users, TrendingUp, TrendingDown, Minus, Plus, Pencil, Trash2, Loader2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress, ProgressIndicator, ProgressTrack } from '@/components/ui/progress'
@@ -12,6 +12,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 interface AdoptionMetric {
   id: string
@@ -41,15 +54,38 @@ const METRIC_ICONS: Record<string, string> = {
   sync_success_rate: '🔄',
 }
 
+const METRIC_OPTIONS = [
+  { value: 'daily_active_users', label: 'Daily Active Users' },
+  { value: 'weekly_active_users', label: 'Weekly Active Users' },
+  { value: 'meetings_logged', label: 'Meetings Logged' },
+  { value: 'extractions_reviewed', label: 'Extractions Reviewed' },
+  { value: 'sync_success_rate', label: 'Sync Success Rate' },
+]
+
 const COUNTRIES = ['Kenya', 'Uganda', 'Tanzania', 'Ethiopia', 'Nigeria', 'Ghana']
+
+const defaultForm = {
+  metric: 'daily_active_users',
+  country: '',
+  period: '',
+  value: '',
+  target: '',
+  previousPeriod: '',
+  unit: '',
+}
 
 export function AdoptionMetricsView() {
   const [data, setData] = useState<AdoptionMetric[]>([])
   const [loading, setLoading] = useState(true)
   const [countryFilter, setCountryFilter] = useState('all')
   const [periodFilter, setPeriodFilter] = useState('all')
+  const [createOpen, setCreateOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editingItem, setEditingItem] = useState<AdoptionMetric | null>(null)
+  const [form, setForm] = useState(defaultForm)
+  const [submitting, setSubmitting] = useState(false)
 
-  useEffect(() => {
+  const fetchData = useCallback(() => {
     const params = new URLSearchParams()
     if (countryFilter !== 'all') params.set('country', countryFilter)
     if (periodFilter !== 'all') params.set('period', periodFilter)
@@ -59,6 +95,8 @@ export function AdoptionMetricsView() {
       .catch(() => setData([]))
       .finally(() => setLoading(false))
   }, [countryFilter, periodFilter])
+
+  useEffect(() => { fetchData() }, [fetchData])
 
   // Group by country
   const grouped = data.reduce<Record<string, AdoptionMetric[]>>((acc, m) => {
@@ -79,6 +117,80 @@ export function AdoptionMetricsView() {
   function getProgressPercent(m: AdoptionMetric): number {
     if (m.target === null || m.target === 0) return 0
     return Math.min(100, Math.max(0, Math.round((m.value / m.target) * 100)))
+  }
+
+  function openEdit(m: AdoptionMetric) {
+    setEditingItem(m)
+    setForm({
+      metric: m.metric,
+      country: m.country,
+      period: m.period,
+      value: String(m.value),
+      target: m.target != null ? String(m.target) : '',
+      previousPeriod: m.previousPeriod != null ? String(m.previousPeriod) : '',
+      unit: m.unit,
+    })
+    setEditOpen(true)
+  }
+
+  async function handleCreate() {
+    setSubmitting(true)
+    try {
+      const res = await fetch('/api/adoption-metrics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          metric: form.metric,
+          country: form.country,
+          period: form.period,
+          value: parseFloat(form.value) || 0,
+          target: form.target !== '' ? parseFloat(form.target) : null,
+          previousPeriod: form.previousPeriod !== '' ? parseFloat(form.previousPeriod) : null,
+          unit: form.unit,
+        }),
+      })
+      if (res.ok) {
+        setCreateOpen(false)
+        fetchData()
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleEdit() {
+    if (!editingItem) return
+    setSubmitting(true)
+    try {
+      const res = await fetch(`/api/adoption-metrics/${editingItem.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          metric: form.metric,
+          country: form.country,
+          period: form.period,
+          value: parseFloat(form.value) || 0,
+          target: form.target !== '' ? parseFloat(form.target) : null,
+          previousPeriod: form.previousPeriod !== '' ? parseFloat(form.previousPeriod) : null,
+          unit: form.unit,
+        }),
+      })
+      if (res.ok) {
+        setEditOpen(false)
+        setEditingItem(null)
+        fetchData()
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm('Delete this adoption metric?')) return
+    try {
+      const res = await fetch(`/api/adoption-metrics/${id}`, { method: 'DELETE' })
+      if (res.ok) fetchData()
+    } catch { /* ignore */ }
   }
 
   if (loading) {
@@ -136,6 +248,63 @@ export function AdoptionMetricsView() {
               ))}
             </SelectContent>
           </Select>
+          <Dialog open={createOpen} onOpenChange={(open) => { if (open) setForm(defaultForm); setCreateOpen(open) }}>
+            <DialogTrigger render={<Button size="sm"><Plus className="size-4 mr-1" />Create Metric</Button>} />
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Create Adoption Metric</DialogTitle>
+                <DialogDescription>Add a new adoption metric record.</DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-3">
+                <div className="grid gap-1.5">
+                  <Label>Metric</Label>
+                  <Select value={form.metric} onValueChange={(v) => setForm({ ...form, metric: v ?? 'daily_active_users' })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {METRIC_OPTIONS.map((m) => (
+                        <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="am-country">Country</Label>
+                    <Input id="am-country" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} placeholder="e.g. Kenya" />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="am-period">Period</Label>
+                    <Input id="am-period" value={form.period} onChange={(e) => setForm({ ...form, period: e.target.value })} placeholder="e.g. Q1-2025" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="am-value">Value</Label>
+                    <Input id="am-value" type="number" step="any" value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="am-target">Target</Label>
+                    <Input id="am-target" type="number" step="any" value={form.target} onChange={(e) => setForm({ ...form, target: e.target.value })} />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="am-prev">Previous Period</Label>
+                    <Input id="am-prev" type="number" step="any" value={form.previousPeriod} onChange={(e) => setForm({ ...form, previousPeriod: e.target.value })} />
+                  </div>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="am-unit">Unit</Label>
+                  <Input id="am-unit" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="e.g. count, percent" />
+                </div>
+              </div>
+              <DialogFooter>
+                <DialogClose render={<Button variant="outline">Cancel</Button>} />
+                <Button onClick={handleCreate} disabled={submitting || !form.country || !form.period || !form.unit}>
+                  {submitting && <Loader2 className="size-4 animate-spin mr-1" />}
+                  Create
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -163,10 +332,20 @@ export function AdoptionMetricsView() {
                   return (
                     <Card key={m.id}>
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-sm flex items-center gap-2">
-                          <span>{METRIC_ICONS[m.metric] ?? '📊'}</span>
-                          {METRIC_LABELS[m.metric] ?? m.metric.replace(/_/g, ' ')}
-                        </CardTitle>
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-sm flex items-center gap-2">
+                            <span>{METRIC_ICONS[m.metric] ?? '📊'}</span>
+                            {METRIC_LABELS[m.metric] ?? m.metric.replace(/_/g, ' ')}
+                          </CardTitle>
+                          <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="icon-sm" onClick={() => openEdit(m)}>
+                              <Pencil className="size-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(m.id)}>
+                              <Trash2 className="size-3.5 text-destructive" />
+                            </Button>
+                          </div>
+                        </div>
                       </CardHeader>
                       <CardContent className="space-y-3">
                         {/* Value vs Target */}
@@ -223,6 +402,64 @@ export function AdoptionMetricsView() {
           ))}
         </div>
       )}
+
+      {/* Edit Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Adoption Metric</DialogTitle>
+            <DialogDescription>Update the adoption metric details.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div className="grid gap-1.5">
+              <Label>Metric</Label>
+              <Select value={form.metric} onValueChange={(v) => setForm({ ...form, metric: v ?? 'daily_active_users' })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {METRIC_OPTIONS.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="am-edit-country">Country</Label>
+                <Input id="am-edit-country" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="am-edit-period">Period</Label>
+                <Input id="am-edit-period" value={form.period} onChange={(e) => setForm({ ...form, period: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="am-edit-value">Value</Label>
+                <Input id="am-edit-value" type="number" step="any" value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="am-edit-target">Target</Label>
+                <Input id="am-edit-target" type="number" step="any" value={form.target} onChange={(e) => setForm({ ...form, target: e.target.value })} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="am-edit-prev">Previous Period</Label>
+                <Input id="am-edit-prev" type="number" step="any" value={form.previousPeriod} onChange={(e) => setForm({ ...form, previousPeriod: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="am-edit-unit">Unit</Label>
+              <Input id="am-edit-unit" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline">Cancel</Button>} />
+            <Button onClick={handleEdit} disabled={submitting}>
+              {submitting && <Loader2 className="size-4 animate-spin mr-1" />}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import {
   TrendingUp,
   FileCheck,
@@ -10,10 +10,34 @@ import {
   Heart,
   Loader2,
   Weight,
+  Plus,
+  Pencil,
+  Trash2,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 interface ActivationArea {
   id: string
@@ -22,6 +46,23 @@ interface ActivationArea {
   category: string
   weight: number
   order: number
+}
+
+const CATEGORIES = [
+  { value: 'lending_volume', label: 'Lending Volume' },
+  { value: 'terms', label: 'Terms' },
+  { value: 'products', label: 'Products' },
+  { value: 'pipeline', label: 'Pipeline' },
+  { value: 'constraints', label: 'Constraints' },
+  { value: 'relationship', label: 'Relationship' },
+]
+
+const defaultForm = {
+  name: '',
+  description: '',
+  category: 'lending_volume',
+  weight: '1',
+  order: '0',
 }
 
 const categoryIcon = (category: string) => {
@@ -75,24 +116,148 @@ const categoryLabel = (category: string) => {
 export function ActivationAreaView() {
   const [areas, setAreas] = useState<ActivationArea[]>([])
   const [loading, setLoading] = useState(true)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editingArea, setEditingArea] = useState<ActivationArea | null>(null)
+  const [form, setForm] = useState(defaultForm)
+  const [submitting, setSubmitting] = useState(false)
 
-  useEffect(() => {
+  const fetchAreas = useCallback(() => {
     fetch('/api/activation-areas')
       .then((r) => r.json())
       .then((d) => { if (Array.isArray(d)) setAreas(d) })
       .finally(() => setLoading(false))
   }, [])
 
+  useEffect(() => { fetchAreas() }, [fetchAreas])
+
+  function openEdit(area: ActivationArea) {
+    setEditingArea(area)
+    setForm({
+      name: area.name,
+      description: area.description,
+      category: area.category,
+      weight: String(area.weight),
+      order: String(area.order),
+    })
+    setEditOpen(true)
+  }
+
+  async function handleCreate() {
+    setSubmitting(true)
+    try {
+      const res = await fetch('/api/activation-areas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          description: form.description,
+          category: form.category,
+          weight: parseFloat(form.weight) || 1,
+          order: parseInt(form.order, 10) || 0,
+        }),
+      })
+      if (res.ok) {
+        setCreateOpen(false)
+        fetchAreas()
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleEdit() {
+    if (!editingArea) return
+    setSubmitting(true)
+    try {
+      const res = await fetch(`/api/activation-areas/${editingArea.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          description: form.description,
+          category: form.category,
+          weight: parseFloat(form.weight) || 1,
+          order: parseInt(form.order, 10) || 0,
+        }),
+      })
+      if (res.ok) {
+        setEditOpen(false)
+        setEditingArea(null)
+        fetchAreas()
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm('Delete this activation area?')) return
+    try {
+      const res = await fetch(`/api/activation-areas/${id}`, { method: 'DELETE' })
+      if (res.ok) fetchAreas()
+    } catch { /* ignore */ }
+  }
+
   const totalWeight = areas.reduce((sum, a) => sum + a.weight, 0)
 
   return (
     <div className="space-y-6 p-4 md:p-6">
       {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Activation Areas</h2>
-        <p className="text-sm text-muted-foreground">
-          The six dimensions of lender activation scoring and intelligence
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Activation Areas</h2>
+          <p className="text-sm text-muted-foreground">
+            The six dimensions of lender activation scoring and intelligence
+          </p>
+        </div>
+        <Dialog open={createOpen} onOpenChange={(open) => { if (open) setForm(defaultForm); setCreateOpen(open) }}>
+          <DialogTrigger render={<Button size="sm"><Plus className="size-4 mr-1" />Create Area</Button>} />
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Create Activation Area</DialogTitle>
+              <DialogDescription>Add a new activation area dimension.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="aa-name">Name</Label>
+                <Input id="aa-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Area name" />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="aa-desc">Description</Label>
+                <Textarea id="aa-desc" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Description" />
+              </div>
+              <div className="grid gap-1.5">
+                <Label>Category</Label>
+                <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v ?? 'lending_volume' })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIES.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="aa-weight">Weight</Label>
+                  <Input id="aa-weight" type="number" step="0.1" value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="aa-order">Order</Label>
+                  <Input id="aa-order" type="number" value={form.order} onChange={(e) => setForm({ ...form, order: e.target.value })} />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose render={<Button variant="outline">Cancel</Button>} />
+              <Button onClick={handleCreate} disabled={submitting || !form.name}>
+                {submitting && <Loader2 className="size-4 animate-spin mr-1" />}
+                Create
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {loading ? (
@@ -104,7 +269,7 @@ export function ActivationAreaView() {
           <CardContent className="py-12 flex flex-col items-center text-muted-foreground">
             <Weight className="size-10 mb-3" />
             <p className="text-sm">No activation areas defined</p>
-            <p className="text-xs mt-1">Areas will appear once configured by administrators</p>
+            <p className="text-xs mt-1">Click &ldquo;Create Area&rdquo; to add one</p>
           </CardContent>
         </Card>
       ) : (
@@ -177,10 +342,16 @@ export function ActivationAreaView() {
                       >
                         {categoryIcon(area.category)}
                       </div>
-                      <div className="text-right">
+                      <div className="flex items-center gap-1">
                         <Badge variant="outline" className="text-[10px]">
                           #{index + 1}
                         </Badge>
+                        <Button variant="ghost" size="icon-sm" onClick={() => openEdit(area)}>
+                          <Pencil className="size-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(area.id)}>
+                          <Trash2 className="size-3.5 text-destructive" />
+                        </Button>
                       </div>
                     </div>
 
@@ -237,6 +408,14 @@ export function ActivationAreaView() {
                       <p className="text-sm font-semibold">{area.weight.toFixed(1)}</p>
                       <p className="text-[10px] text-muted-foreground">weight</p>
                     </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button variant="ghost" size="icon-sm" onClick={() => openEdit(area)}>
+                        <Pencil className="size-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(area.id)}>
+                        <Trash2 className="size-3.5 text-destructive" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -244,6 +423,54 @@ export function ActivationAreaView() {
           </Card>
         </>
       )}
+
+      {/* Edit Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Activation Area</DialogTitle>
+            <DialogDescription>Update the activation area details.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="aa-edit-name">Name</Label>
+              <Input id="aa-edit-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="aa-edit-desc">Description</Label>
+              <Textarea id="aa-edit-desc" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Category</Label>
+              <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v ?? 'lending_volume' })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {CATEGORIES.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="aa-edit-weight">Weight</Label>
+                <Input id="aa-edit-weight" type="number" step="0.1" value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="aa-edit-order">Order</Label>
+                <Input id="aa-edit-order" type="number" value={form.order} onChange={(e) => setForm({ ...form, order: e.target.value })} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline">Cancel</Button>} />
+            <Button onClick={handleEdit} disabled={submitting || !form.name}>
+              {submitting && <Loader2 className="size-4 animate-spin mr-1" />}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Shield, Calendar, Clock, AlertTriangle, CheckCircle2, Star } from 'lucide-react'
+import { useEffect, useState, useCallback } from 'react'
+import { Shield, Calendar, Clock, AlertTriangle, CheckCircle2, Star, Plus, Pencil, Trash2, Loader2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -12,6 +12,20 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Progress, ProgressIndicator, ProgressTrack } from '@/components/ui/progress'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 
 interface WarrantyPeriodRaw {
   id: string
@@ -38,6 +52,13 @@ const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   extended: { label: 'Extended', className: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400' },
 }
 
+const STATUS_OPTIONS = [
+  { value: 'active', label: 'Active' },
+  { value: 'expiring', label: 'Expiring' },
+  { value: 'expired', label: 'Expired' },
+  { value: 'extended', label: 'Extended' },
+]
+
 function enrichWarranty(item: WarrantyPeriodRaw, now: number): WarrantyPeriod {
   const daysRemaining = Math.ceil(
     (new Date(item.endDate).getTime() - now) / (1000 * 60 * 60 * 24)
@@ -49,13 +70,30 @@ function enrichWarranty(item: WarrantyPeriodRaw, now: number): WarrantyPeriod {
   return { ...item, daysRemaining, progressPct }
 }
 
+const defaultForm = {
+  country: '',
+  startDate: '',
+  endDate: '',
+  status: 'active',
+  slaTargetHours: '24',
+  issuesResolved: '0',
+  issuesOpen: '0',
+  satisfactionScore: '',
+  notes: '',
+}
+
 export function WarrantyTracker() {
   const [data, setData] = useState<WarrantyPeriod[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('all')
   const [countryFilter, setCountryFilter] = useState('all')
+  const [createOpen, setCreateOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editingItem, setEditingItem] = useState<WarrantyPeriod | null>(null)
+  const [form, setForm] = useState(defaultForm)
+  const [submitting, setSubmitting] = useState(false)
 
-  useEffect(() => {
+  const fetchData = useCallback(() => {
     const params = new URLSearchParams()
     if (statusFilter !== 'all') params.set('status', statusFilter)
     if (countryFilter !== 'all') params.set('country', countryFilter)
@@ -70,7 +108,89 @@ export function WarrantyTracker() {
       .finally(() => setLoading(false))
   }, [statusFilter, countryFilter])
 
+  useEffect(() => { fetchData() }, [fetchData])
+
   const countries = [...new Set(data.map((w) => w.country))]
+
+  function openEdit(warranty: WarrantyPeriod) {
+    setEditingItem(warranty)
+    setForm({
+      country: warranty.country,
+      startDate: warranty.startDate.split('T')[0],
+      endDate: warranty.endDate.split('T')[0],
+      status: warranty.status,
+      slaTargetHours: String(warranty.slaTargetHours),
+      issuesResolved: String(warranty.issuesResolved),
+      issuesOpen: String(warranty.issuesOpen),
+      satisfactionScore: warranty.satisfactionScore != null ? String(warranty.satisfactionScore) : '',
+      notes: warranty.notes ?? '',
+    })
+    setEditOpen(true)
+  }
+
+  async function handleCreate() {
+    setSubmitting(true)
+    try {
+      const res = await fetch('/api/warranty', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          country: form.country,
+          startDate: form.startDate,
+          endDate: form.endDate,
+          status: form.status,
+          slaTargetHours: parseInt(form.slaTargetHours, 10) || 24,
+          issuesResolved: parseInt(form.issuesResolved, 10) || 0,
+          issuesOpen: parseInt(form.issuesOpen, 10) || 0,
+          satisfactionScore: form.satisfactionScore !== '' ? parseFloat(form.satisfactionScore) : null,
+          notes: form.notes || null,
+        }),
+      })
+      if (res.ok) {
+        setCreateOpen(false)
+        fetchData()
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleEdit() {
+    if (!editingItem) return
+    setSubmitting(true)
+    try {
+      const res = await fetch(`/api/warranty/${editingItem.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          country: form.country,
+          startDate: form.startDate,
+          endDate: form.endDate,
+          status: form.status,
+          slaTargetHours: parseInt(form.slaTargetHours, 10) || 24,
+          issuesResolved: parseInt(form.issuesResolved, 10) || 0,
+          issuesOpen: parseInt(form.issuesOpen, 10) || 0,
+          satisfactionScore: form.satisfactionScore !== '' ? parseFloat(form.satisfactionScore) : null,
+          notes: form.notes || null,
+        }),
+      })
+      if (res.ok) {
+        setEditOpen(false)
+        setEditingItem(null)
+        fetchData()
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm('Delete this warranty period?')) return
+    try {
+      const res = await fetch(`/api/warranty/${id}`, { method: 'DELETE' })
+      if (res.ok) fetchData()
+    } catch { /* ignore */ }
+  }
 
   if (loading) {
     return (
@@ -105,7 +225,7 @@ export function WarrantyTracker() {
           <Shield className="size-5 text-primary" />
           <h2 className="text-lg font-semibold">Warranty Tracker</h2>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 items-center">
           <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v ?? 'all')}>
             <SelectTrigger size="sm" className="w-[140px]">
               <SelectValue placeholder="Status" />
@@ -129,6 +249,73 @@ export function WarrantyTracker() {
               ))}
             </SelectContent>
           </Select>
+          <Dialog open={createOpen} onOpenChange={(open) => { if (open) setForm(defaultForm); setCreateOpen(open) }}>
+            <DialogTrigger render={<Button size="sm"><Plus className="size-4 mr-1" />Create Warranty</Button>} />
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Create Warranty Period</DialogTitle>
+                <DialogDescription>Add a new warranty tracking period.</DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-3">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="wt-country">Country</Label>
+                  <Input id="wt-country" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} placeholder="e.g. Kenya" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="wt-start">Start Date</Label>
+                    <Input id="wt-start" type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="wt-end">End Date</Label>
+                    <Input id="wt-end" type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} />
+                  </div>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label>Status</Label>
+                  <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v ?? 'active' })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {STATUS_OPTIONS.map((s) => (
+                        <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="wt-sla">SLA Target Hours</Label>
+                    <Input id="wt-sla" type="number" value={form.slaTargetHours} onChange={(e) => setForm({ ...form, slaTargetHours: e.target.value })} />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="wt-satisfaction">Satisfaction Score</Label>
+                    <Input id="wt-satisfaction" type="number" step="0.1" value={form.satisfactionScore} onChange={(e) => setForm({ ...form, satisfactionScore: e.target.value })} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="wt-resolved">Issues Resolved</Label>
+                    <Input id="wt-resolved" type="number" value={form.issuesResolved} onChange={(e) => setForm({ ...form, issuesResolved: e.target.value })} />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="wt-open">Issues Open</Label>
+                    <Input id="wt-open" type="number" value={form.issuesOpen} onChange={(e) => setForm({ ...form, issuesOpen: e.target.value })} />
+                  </div>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="wt-notes">Notes</Label>
+                  <Textarea id="wt-notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Optional notes" />
+                </div>
+              </div>
+              <DialogFooter>
+                <DialogClose render={<Button variant="outline">Cancel</Button>} />
+                <Button onClick={handleCreate} disabled={submitting || !form.country || !form.startDate || !form.endDate}>
+                  {submitting && <Loader2 className="size-4 animate-spin mr-1" />}
+                  Create
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -149,7 +336,15 @@ export function WarrantyTracker() {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base">{warranty.country}</CardTitle>
-                    <Badge className={badge.className}>{badge.label}</Badge>
+                    <div className="flex items-center gap-1.5">
+                      <Badge className={badge.className}>{badge.label}</Badge>
+                      <Button variant="ghost" size="icon-sm" onClick={() => openEdit(warranty)}>
+                        <Pencil className="size-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(warranty.id)}>
+                        <Trash2 className="size-3.5 text-destructive" />
+                      </Button>
+                    </div>
                   </div>
                   <CardDescription>
                     SLA Target: {warranty.slaTargetHours}h response
@@ -221,6 +416,74 @@ export function WarrantyTracker() {
           })}
         </div>
       )}
+
+      {/* Edit Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Warranty Period</DialogTitle>
+            <DialogDescription>Update the warranty period details.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="wt-edit-country">Country</Label>
+              <Input id="wt-edit-country" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="wt-edit-start">Start Date</Label>
+                <Input id="wt-edit-start" type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="wt-edit-end">End Date</Label>
+                <Input id="wt-edit-end" type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Status</Label>
+              <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v ?? 'active' })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {STATUS_OPTIONS.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="wt-edit-sla">SLA Target Hours</Label>
+                <Input id="wt-edit-sla" type="number" value={form.slaTargetHours} onChange={(e) => setForm({ ...form, slaTargetHours: e.target.value })} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="wt-edit-satisfaction">Satisfaction Score</Label>
+                <Input id="wt-edit-satisfaction" type="number" step="0.1" value={form.satisfactionScore} onChange={(e) => setForm({ ...form, satisfactionScore: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="wt-edit-resolved">Issues Resolved</Label>
+                <Input id="wt-edit-resolved" type="number" value={form.issuesResolved} onChange={(e) => setForm({ ...form, issuesResolved: e.target.value })} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="wt-edit-open">Issues Open</Label>
+                <Input id="wt-edit-open" type="number" value={form.issuesOpen} onChange={(e) => setForm({ ...form, issuesOpen: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="wt-edit-notes">Notes</Label>
+              <Textarea id="wt-edit-notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline">Cancel</Button>} />
+            <Button onClick={handleEdit} disabled={submitting}>
+              {submitting && <Loader2 className="size-4 animate-spin mr-1" />}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

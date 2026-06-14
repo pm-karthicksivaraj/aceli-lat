@@ -199,12 +199,7 @@ export function MeetingList() {
           </p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm">
-              <Plus className="size-4 mr-1" />
-              New Meeting
-            </Button>
-          </DialogTrigger>
+          <DialogTrigger render={<Button size="sm"><Plus className="size-4 mr-1" />New Meeting</Button>} />
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Create New Meeting</DialogTitle>
