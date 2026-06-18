@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Lender {
+  id                String   @id @default(cuid())
+  institutionName   String
+  contactName       String
+  country           String
+  relationshipStatus String  @default("Active")
+  commitmentScore   Float    @default(0)
+  productScore      Float    @default(0)
+  operationalScore  Float    @default(0)
+  riskScore         Float    @default(0)
+  relationshipScore Float    @default(0)
+  marketScore       Float    @default(0)
+  lastContactDate   DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  meetings          Meeting[]
+  activities        Activity[]
+}
+
+model Meeting {
+  id              String   @id @default(cuid())
+  lenderId        String
+  lender          Lender  @relation(fields: [lenderId], references: [id], onDelete: Cascade)
+  meetingDate     DateTime @default(now())
+  status          String   @default("Draft")
+  typedNotes      String?
+  audioBlobPath   String?
+  transcript      String?
+  duration        Int      @default(0)
+  syncStatus      String   @default("Synced")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  extractions     Extraction[]
+  activities      Activity[]
+}
+
+model Extraction {
+  id              String   @id @default(cuid())
+  meetingId       String
+  meeting         Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  activationArea  String
+  fieldName       String
+  extractedValue  String
+  confidenceScore Float
+  reviewStatus    String   @default("Pending")
+  reviewerNotes   String?
+  reviewedAt      DateTime?
+  reviewedBy      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Activity {
+  id              String   @id @default(cuid())
+  lenderId        String
+  lender          Lender  @relation(fields: [lenderId], references: [id], onDelete: Cascade)
+  meetingId       String?
+  meeting         Meeting? @relation(fields: [meetingId], references: [id])
+  type            String
+  description     String
+  createdAt       DateTime @default(now())
+}

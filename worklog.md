@@ -560,3 +560,41 @@ Stage Summary:
 - Database: Neon PostgreSQL (eu-central-1)
 - 28 tables created and seeded
 - Ready for Vercel deployment
+
+---
+Task ID: budget-bundle
+Agent: main
+Task: Build comprehensive budget/timeline/costing deliverable + bundle all Sprint 0-7 docs into single zip
+
+Work Log:
+- Audited existing sprint folders in /home/z/my-project/download/ (sprint0,1,2,3,4,5,7 — no sprint6 folder, S6 deliverables folded into S7)
+- Loaded xlsx skill (finance_lite scene + design.md engine)
+- Generated Aceli_LAT_Budget_Timeline_Costing.xlsx — 9-sheet workbook with live formulas:
+  1. Cover (project identification + TOC)
+  2. Executive Summary (KPI tiles + funding snapshot)
+  3. Sprint Budget (S0-S7 cost breakdown across 6 dimensions + data bars)
+  4. Resource Costing (14-role rate card + man-day distribution by phase)
+  5. Cost by Category (8 categories Capex/Opex split)
+  6. Development Timeline (32-week Gantt-style calendar with milestones)
+  7. Payment Milestones (M1-M8 billing schedule + payment terms)
+  8. Risk & Contingency (R1-R7 register + scenario analysis)
+  9. Assumptions (pricing basis + sign-off block)
+- Validated workbook: passed (0 issues)
+- Loaded docx skill (create route + design-system)
+- Generated Aceli_LAT_Budget_Timeline_Costing.docx — companion narrative using shared_boilerplate.js (GO-1 palette, R1 cover, matches all sprint docs):
+  - 8 sections: Executive Summary, Sprint-by-Sprint Breakdown, Resource Costing, Cost by Category, Development Timeline, Payment Milestones, Risk & Contingency, Assumptions & Exclusions
+  - 12 detailed tables, 35 headings
+  - Postcheck: passed 8/9 (1 warning re section-break PageBreak, acceptable)
+- Built README.md manifest for the bundle
+- Created /home/z/my-project/scripts/build_bundle_zip.py — zip builder with proper folder structure
+- Generated Aceli_LAT_Complete_Documentation_Bundle.zip — 67 files, 1.49 MB compressed
+- Verified zip integrity: OK (all files readable)
+
+Stage Summary:
+- Total engagement value: $636,768 (base $589,600 + 8% risk reserve $47,168)
+- 8 sprints × 32 weeks × 1,115 man-days across 14 roles
+- Bundle contains: 2 budget files + 64 sprint .docx files + 1 README = 67 files
+- Final deliverables:
+  - /home/z/my-project/download/Aceli_LAT_Budget_Timeline_Costing.xlsx (27 KB, 9 sheets)
+  - /home/z/my-project/download/budget/Aceli_LAT_Budget_Timeline_Costing.docx (32 KB, 8 sections)
+  - /home/z/my-project/download/Aceli_LAT_Complete_Documentation_Bundle.zip (1.49 MB, 67 files)
